@@ -1,0 +1,26 @@
+name: sqlite-backup
+description: Daily consistent backup of the stack's SQLite databases (runs before the Restic backup at 02:40) — n8n moved to urahara, see the n8n-backup-urahara DAG
+
+schedule: "CRON_TZ=America/Sao_Paulo 30 2 * * *"
+
+steps:
+  - name: backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: docker.run
+    with:
+      image: alpine:3
+      pull: missing
+      auto_remove: true
+      network:
+        EndpointsConfig:
+          cloudflare-net: {}
+      volumes:
+        - /opt/homelab/scripts:/opt/homelab/scripts:ro
+        - /opt/apps/vaultwarden:/opt/apps/vaultwarden
+        - /opt/apps/grafana:/opt/apps/grafana
+        - /opt/apps/uptime-kuma:/opt/apps/uptime-kuma
+        - /opt/apps/healthchecks:/opt/apps/healthchecks
+        - /opt/apps/scrutiny:/opt/apps/scrutiny
+      command: sh -c "apk add --no-cache --quiet sqlite && sh /opt/homelab/scripts/backup/backup-sqlite.sh"

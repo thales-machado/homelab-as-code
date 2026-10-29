@@ -1,0 +1,23 @@
+services:
+  redis-exporter-urahara:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter-urahara
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    # No fixed REDIS_ADDR on purpose: monitors immich-redis and
+    # paperless-redis (2 instances on this host) via redis_exporter's
+    # multi-target pattern (/scrape?target=...), same as blackbox-exporter
+    # (metrics_path /probe + relabel_configs) in prometheus.yml.
+    # Published on urahara's LAN IP: VictoriaMetrics (zangetsu) needs IP:port.
+    ports:
+      - "192.168.10.215:9121:9121"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks:
+      - cloudflare-net

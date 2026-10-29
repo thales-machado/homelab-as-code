@@ -1,0 +1,29 @@
+name: immich-album-naming
+description: Normalizes Immich album and folder names to the <Description> - MM-YYYY pattern - runs on zangetsu, executes remotely on urahara via SSH (where Immich and the external library actually live; Dagu does not support a remote DOCKER_HOST per step)
+
+schedule: "CRON_TZ=America/Sao_Paulo 0 4 * * 0"
+
+steps:
+  - name: sync
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      # Explicit shell: see note in restic-backup-urahara.yaml (same ssh.run
+      # pattern, same Dagu unescape quirk).
+      shell: /bin/sh
+      command: >-
+        docker run --rm
+        -v /opt/homelab/scripts:/opt/homelab/scripts:ro
+        -v /opt/homelab/hosts/urahara/.env:/opt/homelab/hosts/urahara/.env:ro
+        -v /mnt/media/immich/external:/mnt/immich-external
+        --network cloudflare-net
+        python:3-alpine
+        sh -c "pip install --quiet --root-user-action=ignore --disable-pip-version-check requests && python3 /opt/homelab/scripts/immich/immich-create-albums-from-folders.py --rename-folders && wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

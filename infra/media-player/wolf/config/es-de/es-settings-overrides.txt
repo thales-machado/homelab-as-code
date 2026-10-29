@@ -1,0 +1,3 @@
+string ApplicationUpdaterFrequency never
+string ScreensaverType dim
+bool InputOnlyFirstController true

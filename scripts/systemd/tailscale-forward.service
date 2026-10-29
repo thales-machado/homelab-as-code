@@ -1,0 +1,11 @@
+[Unit]
+Description=Libera forward da interface tailscale0 na chain DOCKER-USER
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homelab/scripts/networking/tailscale-forward-rules.sh
+
+[Install]
+WantedBy=multi-user.target

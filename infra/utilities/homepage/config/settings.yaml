@@ -1,0 +1,51 @@
+---
+title: Thales Homelab
+description: Homelab Dashboard
+favicon: https://raw.githubusercontent.com/gethomepage/homepage/main/public/homepage.png
+
+theme: dark
+color: slate
+headerStyle: boxedWidgets
+cardBlur: md
+useEqualHeights: true
+disableCollapse: false
+statusStyle: dot
+hideVersion: true
+
+layout:
+  # === ABA: INFRA ===
+  Platform:
+    tab: Infra
+    style: row
+    columns: 3
+  Observability:
+    tab: Infra
+    style: row
+    columns: 3
+  Automation:
+    tab: Infra
+    style: row
+    columns: 3
+  AI:
+    tab: Infra
+    style: row
+    columns: 3
+  # === ABA: APPS ===
+  Finance:
+    tab: Apps
+    style: row
+    columns: 2
+  Content:
+    tab: Apps
+    style: row
+    columns: 3
+  Utilities:
+    tab: Apps
+    style: row
+    columns: 3
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: true
+  provider: google

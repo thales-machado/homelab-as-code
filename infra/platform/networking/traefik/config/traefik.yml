@@ -1,0 +1,70 @@
+# Traefik static config. The Docker provider covers zangetsu services via
+# labels; the file provider (config/dynamic/) covers urahara services (fixed
+# IP:port) and the shared middlewares (crowdsec, pi-hole redirect).
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+api:
+  dashboard: true
+  # Internal port 8080 ("traefik" entrypoint, never published on the host):
+  # direct container-to-container access for the Homepage widget. Only
+  # reachable from inside the Docker network.
+  insecure: true
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: cloudflare-net
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+certificatesResolvers:
+  # DNS-01 via Cloudflare: no ports 80/443 exposed to the internet, no
+  # permanent public record (the challenge only creates/deletes a temporary
+  # _acme-challenge TXT). "domains" (wildcard *.lan.example.com) lives on the
+  # individual router (tls.domains), not here in the static resolver:
+  # "domains" is not a valid field in certificatesResolvers.<name>.acme
+  # (confirmed: Traefik refuses to start with "field not found, node: domains").
+  cloudflare:
+    acme:
+      email: admin@example.com
+      storage: /etc/traefik/acme/acme-cloudflare.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+# CrowdSec plugin - must be referenced per router via
+# `traefik.http.routers.<name>.middlewares: crowdsec@file` (Traefik has no
+# native "apply to every router" at the entrypoint level, confirmed).
+experimental:
+  plugins:
+    crowdsec-bouncer:
+      moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      version: "v1.7.1"
+
+log:
+  level: INFO
+  format: json
+
+# JSON access log on stdout - CrowdSec's detection source (via Loki, see
+# crowdsec/config/acquis.yaml). Without it CrowdSec is blind on the HTTP
+# side (no request events to feed its scenarios).
+accessLog:
+  format: json
+
+# Native Prometheus metrics - without them VictoriaMetrics has no
+# visibility into the proxy itself.
+metrics:
+  prometheus:
+    entryPoint: traefik

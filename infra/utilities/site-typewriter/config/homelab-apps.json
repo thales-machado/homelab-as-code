@@ -1,0 +1,66 @@
+{
+  "_comment": "cruzamento é por id numérico do monitor no Uptime Kuma (GET /api/status-page/heartbeat/homelab -> heartbeatList[id]), nunca por nome/slug — Uptime Kuma não tem slug por monitor. grupos = apps com status ao vivo; estaticos = itens do ecossistema sem monitor individual, renderizados sem badge de status (Watchtower - duas instâncias, zangetsu+urahara, não faz sentido duplicar card; Tailscale; Restic). 'icone' é opcional, só quando o nome de exibição não bate com o slug do dashboard-icons (ex. parênteses). 'publicUrl' vira link clicável no card. 'descricao' vira tooltip (title nativo) explicando o papel do app no homelab.",
+  "grupos": [
+    {
+      "nome": "Plataforma",
+      "apps": [
+        { "id": 169, "nome": "Komodo", "descricao": "Painel de gestão de containers Docker multi-host, com visão unificada dos dois servidores do homelab a partir de um único lugar." },
+        { "id": 138, "nome": "DockFlare", "descricao": "Automatiza a exposição de serviços pra internet via Cloudflare Tunnel, direto por label Docker — cada app decide sozinho se quer ficar público." },
+        { "id": 139, "nome": "Vaultwarden", "descricao": "Cofre de senhas compatível com Bitwarden, usado no dia a dia por mim e por colegas de trabalho." }
+      ]
+    },
+    {
+      "nome": "Rede",
+      "apps": [
+        { "id": 172, "nome": "Traefik", "descricao": "Reverse proxy que roteia todo o tráfego interno por label Docker, sem arquivo de configuração central." },
+        { "id": 173, "nome": "step-ca", "descricao": "CA (autoridade certificadora) interna própria, emite certificado TLS automático pros serviços internos, sem depender de nada externo." },
+        { "id": 145, "nome": "Pi-hole", "descricao": "DNS + bloqueio de anúncios em alta disponibilidade, com IP virtual compartilhado entre dois hosts via keepalived/VRRP." }
+      ]
+    },
+    {
+      "nome": "Observabilidade",
+      "apps": [
+        { "id": 147, "nome": "Uptime Kuma", "descricao": "Monitoramento de disponibilidade de cada serviço do homelab, com histórico de uptime e alerta automático." },
+        { "id": 174, "nome": "Grafana", "descricao": "Visualização de métricas de todos os hosts e serviços — CPU, memória, disco, containers, bancos de dados." },
+        { "id": 175, "nome": "VictoriaMetrics", "descricao": "Banco de séries temporais que armazena as métricas coletadas de todo o homelab, compatível com Prometheus." },
+        { "id": 176, "nome": "Loki", "descricao": "Pipeline de logs centralizado — todo log de todo container passa por aqui, pesquisável direto no Grafana." },
+        { "id": 155, "nome": "Crowdsec", "descricao": "Segurança colaborativa que analisa logs em tempo real e bloqueia IPs por comportamento malicioso." }
+      ]
+    },
+    {
+      "nome": "Automação",
+      "apps": [
+        { "id": 142, "nome": "N8N", "descricao": "Motor de automação de workflows, usado pra automatizar conciliação financeira de um negócio real." },
+        { "id": 171, "nome": "Dagu", "descricao": "Orquestrador de tarefas agendadas — backup de bancos, snapshot de filesystem, sincronizações, com retry e log." },
+        { "id": 167, "nome": "WA Courier", "publicUrl": "https://github.com/thales-machado/wa-courier", "descricao": "Gateway de WhatsApp desenvolvido por mim (open source), usado como canal de entrada/saída das automações." }
+      ]
+    },
+    {
+      "nome": "Conteúdo",
+      "apps": [
+        { "id": 159, "nome": "Immich", "descricao": "Backup e organização de fotos/vídeos do celular, com reconhecimento facial via machine learning local." },
+        { "id": 160, "nome": "Paperless-ngx", "descricao": "Digitalização e indexação de documentos, com OCR e busca por texto automáticos." }
+      ]
+    },
+    {
+      "nome": "Utilidades",
+      "apps": [
+        { "id": 149, "nome": "IT-Tools", "publicUrl": "https://it-tools.example.com", "descricao": "Caixa de ferramentas com conversores, geradores e utilitários do dia a dia de infra — acesso livre, sem login." }
+      ]
+    }
+  ],
+  "estaticos": [
+    {
+      "nome": "Watchtower",
+      "descricao": "Atualiza automaticamente as imagens Docker com versionamento flutuante (:latest), numa instância dedicada por host, com controle explícito por serviço sobre o que pode ou não atualizar sozinho."
+    },
+    {
+      "nome": "Tailscale",
+      "descricao": "VPN mesh que dá acesso à rede inteira de fora de casa, com um host atuando como roteador de sub-rede."
+    },
+    {
+      "nome": "Restic",
+      "descricao": "Motor de backup do homelab, com retenção em camadas (diário/semanal/mensal), rodando via orquestração agendada nos dois hosts."
+    }
+  ]
+}

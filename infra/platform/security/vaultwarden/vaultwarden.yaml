@@ -1,0 +1,41 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - DOMAIN=https://vaultwarden.example.com
+      - SIGNUPS_ALLOWED=false
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_FROM=smtp@example.com
+      - SMTP_FROM_NAME=Vaultwarden
+      - SMTP_SECURITY=starttls
+      - SMTP_PORT=587
+      - SMTP_USERNAME=smtp@example.com
+      - SMTP_PASSWORD=${VAULTWARDEN_SMTP_PASSWORD}
+    volumes:
+      - /opt/apps/vaultwarden:/data
+    depends_on:
+      dockflare:
+        condition: service_healthy
+    networks:
+      - cloudflare-net
+    labels:
+      dockflare.enable: "true"
+      com.centurylinklabs.watchtower.enable: "true"
+      dockflare.hostname: "vaultwarden.example.com"
+      dockflare.service: "http://vaultwarden:80"
+      traefik.enable: "true"
+      traefik.http.routers.vaultwarden.rule: "Host(`vaultwarden.lan.example.com`)"
+      traefik.http.routers.vaultwarden.entrypoints: "websecure"
+      traefik.http.routers.vaultwarden.tls.certresolver: "cloudflare"
+      traefik.http.routers.vaultwarden.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.vaultwarden.loadbalancer.server.port: "80"
+

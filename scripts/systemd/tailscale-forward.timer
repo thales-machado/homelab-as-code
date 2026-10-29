@@ -1,0 +1,10 @@
+[Unit]
+Description=Reaplica periodicamente as regras de forward da interface tailscale0 na chain DOCKER-USER
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=tailscale-forward.service
+
+[Install]
+WantedBy=timers.target

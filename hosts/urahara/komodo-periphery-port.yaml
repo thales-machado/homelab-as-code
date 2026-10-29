@@ -1,0 +1,10 @@
+# urahara-only override: infra/platform/management/komodo/periphery.yaml is
+# host-agnostic (no published port by default). Core runs on zangetsu, so it
+# must reach urahara's Periphery via LAN IP:port (Core connects DIRECTLY to
+# the Server's registered address; see the comment in periphery.yaml about
+# PERIPHERY_SERVER_ENABLED). Not needed on zangetsu, where Core reaches
+# Periphery by container name on the same Docker network.
+services:
+  komodo-periphery:
+    ports:
+      - "192.168.10.215:8120:8120"

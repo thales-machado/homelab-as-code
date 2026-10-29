@@ -1,0 +1,14 @@
+# urahara-only override: pi-hole.yaml is host-agnostic. The static subnet IP
+# comes from PIHOLE_STATIC_IP in the host's .env (Compose does not merge a
+# nested ipv4_address under networks: across included files; tested, the base
+# value always wins, so the override goes through .env, not here). This file
+# only publishes port 80 on the LAN so Nebula Sync (zangetsu) can reach the
+# API cross-host. Same rationale as "Cross-host services (IP:port pattern)"
+# in CONVENTIONS.md, applied to the API instead of HTTP.
+# app_sudo enabled: required by Nebula Sync on replicas.
+services:
+  pi-hole:
+    ports:
+      - "192.168.10.215:80:80"
+    environment:
+      - FTLCONF_webserver_api_app_sudo=true

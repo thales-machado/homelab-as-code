@@ -1,0 +1,27 @@
+services:
+  vikunja:
+    image: vikunja/vikunja:latest
+    container_name: vikunja
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 64
+    # Published on urahara's LAN IP: Traefik (zangetsu) reaches this private
+    # service on another host by IP:port via its file provider.
+    ports:
+      - "192.168.10.215:3456:3456"
+    volumes:
+      - /opt/apps/vikunja/db:/db
+      - /opt/apps/vikunja/files:/app/vikunja/files
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - VIKUNJA_SERVICE_PUBLICURL=https://vikunja.lan.example.com
+      - VIKUNJA_DATABASE_TYPE=sqlite
+      - VIKUNJA_SERVICE_SECRET=${VIKUNJA_JWT_SECRET}
+    networks:
+      - cloudflare-net
+    labels:
+      dockflare.enable: "false"
+      com.centurylinklabs.watchtower.enable: "true"

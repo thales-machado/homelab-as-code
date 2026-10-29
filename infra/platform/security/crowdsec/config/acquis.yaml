@@ -1,0 +1,10 @@
+# Detection source: Loki (not Traefik's file access log). Avoids mounting an
+# extra volume just for this, since Traefik's stdout (accessLog: json, see
+# traefik.yml) already reaches Loki via Grafana Alloy (every container is
+# discovered automatically, see alloy.river). Queries by the "container"
+# label, not by host, so it works regardless of which host Traefik runs on.
+source: loki
+url: http://192.168.10.214:3100
+query: '{container="traefik"}'
+labels:
+  type: traefik

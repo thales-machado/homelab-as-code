@@ -1,0 +1,17 @@
+terraform {
+  backend "s3" {
+    bucket = "terraform-state"
+    key    = "healthchecks/terraform.tfstate"
+    region = "auto"
+    endpoints = {
+      s3 = "https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com"
+    }
+    use_path_style              = true
+    use_lockfile                = true
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_s3_checksum            = true
+  }
+}

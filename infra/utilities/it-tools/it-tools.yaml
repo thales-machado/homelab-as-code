@@ -1,0 +1,28 @@
+services:
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 64
+    # Published on urahara's LAN IP: Traefik (zangetsu) reaches this private
+    # service on another host by IP:port via its file provider. A container
+    # name like "it-tools:80" only resolves on the same host (real bug in the
+    # old Caddy setup: it always returned 502).
+    ports:
+      - "192.168.10.215:8092:80"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    depends_on:
+      dockflare-agent:
+        condition: service_started
+    networks:
+      - cloudflare-net
+    labels:
+      dockflare.enable: "true"
+      com.centurylinklabs.watchtower.enable: "true"
+      dockflare.hostname: "it-tools.example.com"
+      dockflare.service: "http://it-tools:80"

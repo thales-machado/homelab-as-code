@@ -1,0 +1,25 @@
+services:
+  openspeedtest:
+    image: openspeedtest/latest:latest
+    container_name: openspeedtest
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 64
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    labels:
+      # Digest watching (not tag/semver comparison); see CONVENTIONS.md
+      # "Docker image policy".
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.speedtest.rule: "Host(`speedtest.lan.example.com`)"
+      traefik.http.routers.speedtest.entrypoints: "websecure"
+      traefik.http.routers.speedtest.tls.certresolver: "cloudflare"
+      traefik.http.routers.speedtest.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.speedtest.loadbalancer.server.port: "3000"
+

@@ -1,0 +1,32 @@
+services:
+  fidi:
+    image: fireflyiii/data-importer:latest
+    container_name: fidi
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    volumes:
+      - /opt/apps/fidi/uploads:/var/www/html/storage/uploads
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # URL interna do Firefly III (mesma rede Docker)
+      - FIREFLY_III_URL=http://firefly-iii:8080
+      - TRUSTED_PROXIES=**
+      # Habilita import via API/CLI (usado pelo n8n)
+      - CAN_POST_AUTOIMPORT=true
+      - CAN_POST_FILES=true
+    depends_on:
+      - firefly-iii
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.fidi.rule: "Host(`fidi.lan.example.com`)"
+      traefik.http.routers.fidi.entrypoints: "websecure"
+      traefik.http.routers.fidi.tls.certresolver: "cloudflare"
+      traefik.http.routers.fidi.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.fidi.loadbalancer.server.port: "8080"

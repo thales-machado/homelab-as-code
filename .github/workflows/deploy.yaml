@@ -1,0 +1,113 @@
+# Auto-redeploy of the homelab-zangetsu/homelab-urahara stacks in Komodo.
+# Same pattern as another Komodo-deployed repo: HMAC listener plus a
+# path filter in Actions, since native GitHub webhooks have no path filter.
+#
+# homelab-urahara uses its own webhook_secret (see the Stack in Komodo).
+# homelab-zangetsu uses the Core's global webhook_secret (an empty field on
+# the Stack falls back to the default), so its GitHub secret below must match
+# KOMODO_WEBHOOK_SECRET in .env. Both use webhook_force_deploy: true to work
+# around the Komodo <2.3.3 bug where DeployStackIfChanged hangs forever on a
+# Stack whose compose.yaml is `include:`-heavy (see komodo.yaml).
+#
+# Per-host split: instead of a static path filter, read the include: list of
+# each hosts/<host>/compose.yaml to find which infra/ fragments that host
+# actually uses. A stack is triggered only if a changed file falls inside a
+# fragment it includes (or inside hosts/<host>/ itself). A fragment included
+# by both (e.g. grafana-alloy, cadvisor, pi-hole) triggers both; a fragment
+# used by one host only (e.g. immich, urahara only) triggers just that one.
+name: Deploy Homelab
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hosts/zangetsu/**"
+      - "hosts/urahara/**"
+      - "infra/**"
+
+jobs:
+  detect-changes:
+    # Deploys only from the private repo; this public copy is not wired to the hosts.
+    if: github.repository == 'thales-machado/homelab'
+    runs-on: ubuntu-latest
+    outputs:
+      zangetsu: ${{ steps.detect.outputs.zangetsu }}
+      urahara: ${{ steps.detect.outputs.urahara }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determinar hosts afetados
+        id: detect
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="HEAD~1"
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
+          echo "Arquivos alterados:"
+          echo "$CHANGED"
+
+          # Extract the infra/ paths listed in include: and reduce them to the
+          # fragment directory. Skips commented-out lines and local overrides
+          # without the ../../ prefix (already covered by the direct
+          # hosts/<host>/ match).
+          get_prefixes() {
+            grep -E '^\s*-\s*\.\./\.\./[^#[:space:]]' "$1" \
+              | sed -E 's/^\s*-\s*//; s/\s*#.*$//; s|^\.\./\.\./||' \
+              | xargs -n1 dirname | sort -u
+          }
+
+          Z_PREFIXES=$(get_prefixes hosts/zangetsu/compose.yaml)
+          U_PREFIXES=$(get_prefixes hosts/urahara/compose.yaml)
+
+          match_host() {
+            local hostdir="$2"
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              case "$f" in "$hostdir"/*) echo true; return ;; esac
+              while IFS= read -r p; do
+                [ -z "$p" ] && continue
+                case "$f" in "$p"/*|"$p") echo true; return ;; esac
+              done <<< "$1"
+            done <<< "$CHANGED"
+            echo false
+          }
+
+          echo "zangetsu=$(match_host "$Z_PREFIXES" hosts/zangetsu)" >> "$GITHUB_OUTPUT"
+          echo "urahara=$(match_host "$U_PREFIXES" hosts/urahara)" >> "$GITHUB_OUTPUT"
+
+  deploy-zangetsu:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.zangetsu == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Komodo deploy (homelab-zangetsu)
+        env:
+          KOMODO_WEBHOOK_SECRET: ${{ secrets.KOMODO_HOMELAB_ZANGETSU_WEBHOOK_SECRET }}
+        run: |
+          BODY='{"ref":"refs/heads/main","repository":{"full_name":"${{ github.repository }}"}}'
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$KOMODO_WEBHOOK_SECRET" | sed 's/^.* //')
+          curl -sf -X POST "https://komodo.example.com/listener/github/stack/<ZANGETSU_STACK_ID>/deploy" \
+            -H "Content-Type: application/json" \
+            -H "X-Github-Event: push" \
+            -H "X-Hub-Signature-256: sha256=$SIG" \
+            --data-raw "$BODY"
+
+  deploy-urahara:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.urahara == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Komodo deploy (homelab-urahara)
+        env:
+          KOMODO_WEBHOOK_SECRET: ${{ secrets.KOMODO_HOMELAB_URAHARA_WEBHOOK_SECRET }}
+        run: |
+          BODY='{"ref":"refs/heads/main","repository":{"full_name":"${{ github.repository }}"}}'
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$KOMODO_WEBHOOK_SECRET" | sed 's/^.* //')
+          curl -sf -X POST "https://komodo.example.com/listener/github/stack/<URAHARA_STACK_ID>/deploy" \
+            -H "Content-Type: application/json" \
+            -H "X-Github-Event: push" \
+            -H "X-Hub-Signature-256: sha256=$SIG" \
+            --data-raw "$BODY"

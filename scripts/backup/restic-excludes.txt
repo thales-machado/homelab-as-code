@@ -1,0 +1,60 @@
+# Restic exclude file (see CONVENTIONS.md, "Database backup"). Excludes
+# any "hot" SQLite/Postgres file under
+# /opt/apps, outside the db-backup/ folders (which hold the consistent
+# snapshots written by scripts/backup/backup-sqlite.sh and scripts/backup/backup-postgres.sh).
+#
+# Patterns are non-recursive on purpose: they match only files directly in
+# /opt/apps/<app>/ (fixed depth), never in /opt/apps/<app>/db-backup/ (one
+# level deeper), so the backups themselves are never excluded.
+/source/opt/apps/*/*.sqlite
+/source/opt/apps/*/*.sqlite-wal
+/source/opt/apps/*/*.sqlite-shm
+/source/opt/apps/*/*.sqlite3
+/source/opt/apps/*/*.sqlite3-wal
+/source/opt/apps/*/*.sqlite3-shm
+/source/opt/apps/*/*.db
+/source/opt/apps/*/*.db-wal
+/source/opt/apps/*/*.db-shm
+# Exclude the CONTENTS of */db/ (Postgres data dir), not the directory itself.
+# vikunja keeps its SQLite DB in /opt/apps/vikunja/db/, so its consistent
+# snapshot lands in /opt/apps/vikunja/db/db-backup/ (one level inside what
+# this pattern covers). Excluding the directory (`/db/`) took db-backup with
+# it, and restic cannot re-include a child of an excluded directory. With
+# `/db/*` the directory survives and the negation below works. Tested with
+# real restic before applying.
+/source/opt/apps/*/db/*
+!/source/opt/apps/*/db/db-backup
+
+# Home Assistant is an exception to the patterns above: its database lives
+# one level deeper (/opt/apps/home-assistant/config/, the container's own
+# mount), not directly in /opt/apps/home-assistant/. Without this specific
+# entry the hot copy of home-assistant_v2.db would not be excluded (only the
+# db-backup/ snapshot, written by scripts/backup/backup-sqlite-urahara.sh, would be
+# covered by the deeper generic db-backup/ pattern).
+/source/opt/apps/home-assistant/config/*.db
+/source/opt/apps/home-assistant/config/*.db-wal
+/source/opt/apps/home-assistant/config/*.db-shm
+
+# Crowdsec: same situation as Home Assistant above. crowdsec.db lives in
+# /opt/apps/crowdsec/data/ (one level deeper than the generic pattern
+# covers). Its consistent snapshot is written by
+# scripts/backup/backup-sqlite-urahara.sh.
+/source/opt/apps/crowdsec/data/*.db
+/source/opt/apps/crowdsec/data/*.db-wal
+/source/opt/apps/crowdsec/data/*.db-shm
+
+# Wolf (retro): only the RetroArch profile's saves, states and configs matter.
+# Cores, shaders, Dolphin Sys and the download cache (~270 MB core pack) are
+# reproducible with scripts/setup/setup-wolf-retroarch.sh; assets, database,
+# thumbnails, downloads and .cache are regenerable/disposable.
+/source/opt/apps/wolf/cache/*
+/source/opt/apps/wolf/run/*
+/source/opt/apps/wolf/es-de-media/*
+/source/opt/apps/wolf/profile-data/*/*/.cache/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/cores/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/shaders/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/system/dolphin-emu/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/assets/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/database/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/thumbnails/*
+/source/opt/apps/wolf/profile-data/*/*/.config/retroarch/downloads/*

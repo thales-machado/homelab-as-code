@@ -1,0 +1,27 @@
+name: restic-prune-urahara
+description: Weekly prune of urahara's Restic repository (GFS retention) - runs on zangetsu, executes remotely on urahara via SSH
+
+schedule: "CRON_TZ=America/Sao_Paulo 30 4 * * 0"
+
+steps:
+  - name: prune
+    retry_policy:
+      limit: 2
+      interval_sec: 1800
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      # Explicit shell - see comment in restic-backup-urahara.yaml
+      shell: /bin/sh
+      command: >-
+        docker run --rm
+        -v /opt/homelab/hosts/urahara/.env:/opt/homelab/hosts/urahara/.env:ro
+        -v /mnt/backup/urahara:/repo
+        --network cloudflare-net
+        alpine:3
+        sh -c "envf=/opt/homelab/hosts/urahara/.env; export RESTIC_PASSWORD=\$(grep \"^RESTIC_PASSWORD=\" \$envf | cut -d= -f2-); export RESTIC_REPOSITORY=/repo; apk add --no-cache --quiet restic && restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune && wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

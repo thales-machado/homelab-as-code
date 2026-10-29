@@ -1,0 +1,43 @@
+services:
+  trilium:
+    image: triliumnext/notes:latest
+    container_name: trilium
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 64
+    # Published on urahara's LAN IP: Traefik (zangetsu) reaches this private
+    # service on another host by IP:port via its file provider.
+    ports:
+      - "192.168.10.215:8091:8080"
+    volumes:
+      - /opt/apps/trilium:/home/node/trilium-data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    depends_on:
+      dockflare-agent:
+        condition: service_started
+    networks:
+      - cloudflare-net
+    labels:
+      dockflare.enable: "true"
+      com.centurylinklabs.watchtower.enable: "true"
+      dockflare.hostname: "trilium.example.com"
+      dockflare.service: "http://trilium:8080"
+      dockflare.access.group: "homelab-admin"
+      # /share bypasses Access: protected by Trilium's own #shareCredentials
+      # (user/password), not by Cloudflare Access/MFA
+      dockflare.0.hostname: "trilium.example.com"
+      dockflare.0.path: "/share"
+      dockflare.0.service: "http://trilium:8080"
+      dockflare.0.access.group: "public-default-bypass"
+      # The /share page loads assets (icons/css/js) from ../assets/, outside
+      # /share. Without this route they hit the base route protected by
+      # Access/MFA and come back blocked (302) for anyone without a
+      # homelab-admin session, breaking the public page's styling.
+      dockflare.1.hostname: "trilium.example.com"
+      dockflare.1.path: "/assets"
+      dockflare.1.service: "http://trilium:8080"
+      dockflare.1.access.group: "public-default-bypass"

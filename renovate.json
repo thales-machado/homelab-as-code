@@ -1,0 +1,62 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "America/Sao_Paulo",
+  "branchPrefix": "renovate/",
+  "labels": ["renovate", "homelab"],
+  "dependencyDashboard": true,
+  "enabledManagers": ["docker-compose"],
+  "docker-compose": {
+    "managerFilePatterns": [
+      "/(^|/)infra/.+\\.yaml$/"
+    ]
+  },
+  "ignorePaths": [],
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "docker minor updates",
+      "automerge": false
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "docker major updates",
+      "automerge": false
+    },
+    {
+      "description": "Ignore packages pinned to an exact version — never update",
+      "matchPackageNames": [
+        "tecnativa/docker-socket-proxy",
+        "analogj/scrutiny",
+        "tensorchord/pgvecto-rs",
+        "ghcr.io/iron-io/smartctl-exporter"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Pin major version — postgres 16, redis 7, caddy 2, alpine 3.20",
+      "matchPackageNames": ["postgres"],
+      "allowedVersions": "<17"
+    },
+    {
+      "matchPackageNames": ["redis"],
+      "allowedVersions": "<8"
+    },
+    {
+      "matchPackageNames": ["caddy"],
+      "allowedVersions": "<3"
+    },
+    {
+      "matchPackageNames": ["alpine"],
+      "allowedVersions": "<3.21"
+    }
+  ]
+}

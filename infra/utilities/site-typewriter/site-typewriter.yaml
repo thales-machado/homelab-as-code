@@ -1,0 +1,53 @@
+services:
+  site-typewriter:
+    # Experimental v1 of the personal site (flip card + live "typed" CSS +
+    # live homelab). The root domain (example.com) went to the new minimalist
+    # case-study site.
+    # Not published to ghcr yet (the site-typewriter repo has no CI): the image
+    # is built locally on zangetsu from its own repo. Switch to
+    # ghcr.io/thales-machado/site-typewriter:latest (same pattern as wa-courier)
+    # once CI exists; only this line changes.
+    image: site-typewriter:local
+    container_name: site-typewriter
+    restart: unless-stopped
+    # No read_only: true, on purpose. Tested in production: it breaks the
+    # image's official entrypoint (envsubst renders the template at runtime
+    # and writes the generated config inside /etc/nginx; tmpfs does not give
+    # the image's non-root UID the needed permission even on the right path,
+    # still "not writable"). Without that hardening the container runs fine.
+    cpus: 0.25
+    mem_limit: 64m
+    pids_limit: 32
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      # homelab-apps.json lives here (infra source of truth), not baked into
+      # the image; same pattern as Homepage's services.yaml. It overrides the
+      # default the Dockerfile copies into the image (so the image also works
+      # standalone outside the homelab).
+      - ./config/homelab-apps.json:/usr/share/nginx/html/homelab-apps.json:ro
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # Same pair Homepage uses (services.yaml) to read Komodo container
+      # counts. nginx injects them as proxy headers; they never reach the
+      # browser (see nginx.conf.template).
+      - KOMODO_API_KEY=${KOMODO_API_KEY}
+      - KOMODO_API_SECRET=${KOMODO_API_SECRET}
+    networks:
+      - cloudflare-net
+    depends_on:
+      dockflare:
+        condition: service_healthy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      # Public only: site.example.com via Cloudflare Tunnel / DockFlare.
+      # The root domain example.com belongs to the new site (minimalist
+      # case study, separate project); this experimental v1 is kept as a
+      # second version. No dockflare.access.group on purpose: personal
+      # site/portfolio, must be reachable without MFA (same exception
+      # category as it-tools/immich/vaultwarden, see CONVENTIONS.md).
+      dockflare.enable: "true"
+      dockflare.hostname: "site.example.com"
+      dockflare.service: "http://site-typewriter:8080"

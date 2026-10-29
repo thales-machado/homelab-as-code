@@ -1,0 +1,162 @@
+body {
+  background: radial-gradient(circle at 20% 20%, #1e293b 0%, #0f172a 55%, #020617 100%);
+  background-attachment: fixed;
+}
+
+.service-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.service-icon {
+  border-radius: 999px;
+  padding: 8px;
+  margin: 6px;
+  width: 3.75rem !important;
+  height: 3.75rem !important;
+}
+
+.service-icon img,
+.service-icon svg {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.service-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.2px;
+}
+
+.service-description {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* Bookmarks: avoid 1/4-width columns with a gap in the middle when there are only 2 groups */
+.bookmark-group {
+  flex-basis: 48% !important;
+  max-width: 48% !important;
+}
+
+/* Per-category accent, follows the "layout:" order in settings.yaml */
+.services-group:nth-of-type(1) .service-card { border-left: 3px solid #a855f7; }
+.services-group:nth-of-type(1) .service-icon { box-shadow: 0 0 0 6px rgba(168, 85, 247, 0.15); }
+.services-group:nth-of-type(1) .service-group-name {
+  color: #a855f7;
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(2) .service-card { border-left: 3px solid #38bdf8; }
+.services-group:nth-of-type(2) .service-icon { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0.15); }
+.services-group:nth-of-type(2) .service-group-name {
+  color: #38bdf8;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(3) .service-card { border-left: 3px solid #34d399; }
+.services-group:nth-of-type(3) .service-icon { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.15); }
+.services-group:nth-of-type(3) .service-group-name {
+  color: #34d399;
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(4) .service-card { border-left: 3px solid #f59e0b; }
+.services-group:nth-of-type(4) .service-icon { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15); }
+.services-group:nth-of-type(4) .service-group-name {
+  color: #f59e0b;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(5) .service-card { border-left: 3px solid #f472b6; }
+.services-group:nth-of-type(5) .service-icon { box-shadow: 0 0 0 6px rgba(244, 114, 182, 0.15); }
+.services-group:nth-of-type(5) .service-group-name {
+  color: #f472b6;
+  background: linear-gradient(90deg, rgba(244, 114, 182, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(6) .service-card { border-left: 3px solid #facc15; }
+.services-group:nth-of-type(6) .service-icon { box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.15); }
+.services-group:nth-of-type(6) .service-group-name {
+  color: #facc15;
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.services-group:nth-of-type(7) .service-card { border-left: 3px solid #94a3b8; }
+.services-group:nth-of-type(7) .service-icon { box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.15); }
+.services-group:nth-of-type(7) .service-group-name {
+  color: #94a3b8;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+/* Active tab (Infra/Apps) */
+[role="tab"][aria-selected="true"] {
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: #38bdf8 !important;
+}
+
+/* Bookmarks: same look as the service cards */
+.bookmark > a {
+  border-radius: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.bookmark > a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.bookmark-group:nth-of-type(1) .bookmark > a { border-left: 3px solid #fb923c; }
+.bookmark-group:nth-of-type(1) .bookmark-group-name {
+  color: #fb923c;
+  background: linear-gradient(90deg, rgba(251, 146, 60, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+.bookmark-group:nth-of-type(2) .bookmark > a { border-left: 3px solid #2dd4bf; }
+.bookmark-group:nth-of-type(2) .bookmark-group-name {
+  color: #2dd4bf;
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.22), transparent 80%);
+  display: inline-block;
+  padding: 4px 16px 4px 10px;
+  border-radius: 6px;
+}
+
+/* Header widgets: single accent, the brand color used on the tabs */
+.widget-container {
+  border-top: 2px solid rgba(56, 189, 248, 0.35);
+}
+
+.resource-icon {
+  color: #38bdf8 !important;
+}

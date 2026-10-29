@@ -1,0 +1,17 @@
+services:
+  unpoller:
+    image: ghcr.io/unpoller/unpoller:latest
+    container_name: unpoller
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 32
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+

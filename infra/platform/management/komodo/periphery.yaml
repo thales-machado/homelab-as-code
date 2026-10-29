@@ -1,0 +1,83 @@
+# Komodo Periphery: agent that runs on EVERY managed host, included on both
+# zangetsu and urahara (host-agnostic). Connects to Core via
+# PERIPHERY_CORE_ADDRESS/PERIPHERY_CONNECT_AS, whose values differ per host
+# (container name on the same Docker network on zangetsu, LAN-published
+# IP:port on urahara), so they can't be declared here. Each host sets
+# KOMODO_SERVER_NAME/KOMODO_PERIPHERY_CORE_ADDRESS in its own .env (same
+# pattern as PIHOLE_STATIC_IP).
+# PERIPHERY_PASSKEYS must match Core's KOMODO_PASSKEY (same .env, global to
+# both hosts). Without it the Noise handshake never completes, silently: the
+# container starts normally, but the Server never shows "Ok" in the UI and
+# core.pub is never written to /config/keys. Confirmed in production. The
+# public key exchange itself is automatic (TOFU, written to /config/keys),
+# but only after the passkey authenticates the connection.
+# PERIPHERY_SERVER_ENABLED=true is required together with
+# PERIPHERY_CORE_ADDRESS (outbound mode): by default, setting core_address
+# automatically DISABLES the inbound server (port 8120). In practice Core
+# always connects DIRECTLY to the Server address (the "address" field set in
+# the UI/API) to check status/stats. Without inbound enabled, port 8120 never
+# listens and the Server stays "NotOk" (Connection refused) even with the
+# outbound channel working. Confirmed in production: both modes must coexist.
+# Docker socket mounted directly (no docker-socket-proxy) because Periphery
+# needs full read-write control (start/stop/deploy).
+services:
+  komodo-periphery:
+    image: ghcr.io/moghtech/komodo-periphery:2
+    container_name: komodo-periphery
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 128
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - PERIPHERY_CORE_ADDRESS=${KOMODO_PERIPHERY_CORE_ADDRESS}
+      - PERIPHERY_CONNECT_AS=${KOMODO_SERVER_NAME}
+      - PERIPHERY_CORE_PUBLIC_KEYS=file:/config/keys/core.pub
+      - PERIPHERY_PASSKEYS=${KOMODO_PASSKEY}
+      - PERIPHERY_SERVER_ENABLED=true
+      - PERIPHERY_ROOT_DIRECTORY=/opt/apps/komodo/periphery/root
+      # A native git-clone Stack runs `docker compose` as a subprocess INSIDE
+      # this container. Without this, `env_file: - ${HOMELAB_ENV}` in the
+      # fragments fails silently (${HOMELAB_ENV} is empty in that subprocess;
+      # today it only exists in the human SSH session via /etc/environment)
+      # with "env file not found: stat : no file directory". Passes the value
+      # already resolved by the shell that starts THIS container (same source
+      # as /etc/environment) into it, per host.
+      - HOMELAB_ENV=${HOMELAB_ENV}
+      # Equivalent to `git config --global --add safe.directory /opt/homelab`
+      # via env vars (survives --force-recreate, no persisted .gitconfig
+      # needed). The owner of /opt/homelab on the host differs from the user
+      # running git inside Periphery, which triggers the "dubious ownership"
+      # protection. Required for the native git-clone Stack
+      # (clone_path=/opt/homelab). A host with an extra override (e.g. an extra
+      # mount on urahara) must
+      # redeclare this entry in the override: GIT_CONFIG_* does not merge
+      # across fragments with the same variable name, it only overrides.
+      - GIT_CONFIG_COUNT=1
+      - GIT_CONFIG_KEY_0=safe.directory
+      - GIT_CONFIG_VALUE_0=/opt/homelab
+    volumes:
+      - /opt/apps/komodo/periphery/keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - /opt/apps/komodo/periphery/root:/opt/apps/komodo/periphery/root
+      # Bind mount of the real homelab repo path, needed for Komodo Stack's
+      # "files on host" mode to read compose.yaml/.env directly from the real
+      # path, without cloning via git or duplicating files inside Periphery's
+      # root_directory. Present on both hosts (zangetsu and urahara each run
+      # their own clone of /opt/homelab).
+      - /opt/homelab:/opt/homelab
+    labels:
+      # Floating tag (:2): standard auto-update opt-in (see the Docker image
+      # policy in CONVENTIONS.md). Without it, Periphery only updates manually and
+      # can drift from Core's version (happened in production: two
+      # "Server Version Mismatch" in a row until a manual pull). It runs in a
+      # separate Compose project (see "Komodo deployment" in CONVENTIONS.md), so
+      # Watchtower recreating it doesn't collide with an in-progress Komodo
+      # deploy.
+      com.centurylinklabs.watchtower.enable: "true"
+      dockflare.enable: "false"
+    networks:
+      - cloudflare-net

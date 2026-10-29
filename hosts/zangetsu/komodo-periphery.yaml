@@ -1,0 +1,24 @@
+# Separate Compose project on purpose: komodo-periphery must NEVER live in
+# the same Compose project ("homelab") as the homelab-<host> Stack managed by
+# Komodo. Seen in production: even with periphery.yaml removed from the main
+# compose.yaml include:, Periphery was still recreated on every DeployStack
+# (killing itself midway, leaving the deploy stuck in "InProgress" forever
+# and the Stack DOWN), because the container still carried the label
+# com.docker.compose.project=homelab (inherited from the Stack's
+# project_name:). Komodo operates at the Compose project level, not just on
+# the files/services declared in the Stack.
+#
+# The network is referenced as external: true (already created by the main
+# compose.yaml). Do not duplicate the network definition here.
+#
+# Manual deploy/update: cd hosts/<host> && docker compose -f komodo-periphery.yaml up -d
+# (never via Komodo/webhook: it is deliberately in no include:, and must never
+# be passed with -f together with compose.yaml).
+name: komodo-periphery
+
+networks:
+  cloudflare-net:
+    external: true
+
+include:
+  - ../../infra/platform/management/komodo/periphery.yaml

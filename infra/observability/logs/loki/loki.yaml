@@ -1,0 +1,30 @@
+services:
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    user: "0:0"
+    volumes:
+      - /opt/apps/loki:/loki
+      - ./config/loki.yaml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "192.168.10.214:3100:3100"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.loki.rule: "Host(`loki.lan.example.com`)"
+      traefik.http.routers.loki.entrypoints: "websecure"
+      traefik.http.routers.loki.tls.certresolver: "cloudflare"
+      traefik.http.routers.loki.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.loki.loadbalancer.server.port: "3100"
+

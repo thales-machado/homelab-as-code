@@ -1,0 +1,102 @@
+services:
+  paperless-redis:
+    image: redis:7-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    # Tag "7-alpine": no Watchtower label, never auto-updated
+    # (deliberate, stateful component).
+
+  paperless-db:
+    image: postgres:16-alpine
+    container_name: paperless-db
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless -d paperless"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # Published on urahara's LAN IP so postgres-exporter (on zangetsu) can
+    # reach it. Same rationale as CONVENTIONS.md "Cross-host services
+    # (IP:port pattern)", applied to Postgres instead of HTTP.
+    ports:
+      - "192.168.10.215:5432:5432"
+    volumes:
+      - /opt/apps/paperless/db:/var/lib/postgresql/data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=paperless
+      - POSTGRES_PASSWORD=${PAPERLESS_DBPASS}
+      - POSTGRES_DB=paperless
+    networks:
+      - cloudflare-net
+    # Tag "16-alpine": no Watchtower label, never auto-updated
+    # (deliberate, database).
+
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-ngx
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 1024m
+    pids_limit: 128
+    ports:
+      - "192.168.10.215:8000:8000"
+    volumes:
+      - /opt/apps/paperless/data:/usr/src/paperless/data
+      - /opt/apps/paperless/export:/usr/src/paperless/export
+      # Must mount the WHOLE /usr/src/paperless/media, not just media/documents.
+      # The official Dockerfile declares VOLUME on exactly these 4 paths (data,
+      # media, consume, export). Mounting only a subdirectory of "media" makes
+      # Docker create an anonymous volume for the parent "media" to satisfy the
+      # image's VOLUME, silently shadowing the real bind mount (no error at all).
+      # This was the root cause of files "disappearing" after any recreate.
+      - /mnt/media/paperless/documents:/usr/src/paperless/media
+      - /mnt/media/paperless/consume:/usr/src/paperless/consume
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - PAPERLESS_OCR_LANGUAGE=por+eng
+      - PAPERLESS_OCR_LANGUAGES=por
+      # Behind Traefik (HTTPS outside, HTTP inside)
+      - PAPERLESS_PROXY_SSL_HEADER=["HTTP_X_FORWARDED_PROTO", "https"]
+      - PAPERLESS_USE_X_FORWARD_HOST=true
+      - PAPERLESS_ADMIN_USER=${ADMIN_USER}
+      - PAPERLESS_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - PAPERLESS_REDIS=redis://paperless-redis:6379
+      - PAPERLESS_DBENGINE=postgresql
+      - PAPERLESS_DBHOST=paperless-db
+      - PAPERLESS_DBUSER=paperless
+      - PAPERLESS_DBPASS=${PAPERLESS_DBPASS}
+      - PAPERLESS_DBNAME=paperless
+    depends_on:
+      paperless-db:
+        condition: service_healthy
+      paperless-redis:
+        condition: service_healthy
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+

@@ -1,0 +1,37 @@
+services:
+  wolf:
+    # Pinned by digest: Wolf has had no releases since 2024.07, only the
+    # rolling stable branch. Updates are manual (pull stable, check the new
+    # digest and test a stream before changing it here). No Watchtower label
+    # on purpose.
+    image: ghcr.io/games-on-whales/wolf@sha256:b0ef253739f9bd49b71eba7e150c955fd05990c0d409e666d89236995351551a
+    container_name: wolf
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 768m
+    # pids_limit counts threads (GStreamer + embedded PulseAudio), hence
+    # above the repo's usual 64.
+    pids_limit: 1024
+    # Network exception (CONVENTIONS.md, "Network exceptions"): Wolf publishes fixed ports
+    # (47984/47989/48010 TCP, 47999/48100/48200 UDP) and announces mDNS on the LAN.
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - WOLF_RENDER_NODE=/dev/dri/renderD128
+    volumes:
+      - /opt/apps/wolf:/etc/wolf:rw
+      # Wolf expects this host path and passes it to the app containers
+      # (Wayland/PulseAudio sockets); without the bind the image creates an anonymous volume.
+      - /opt/apps/wolf/run:/run/user/wolf:rw
+      # Exception (CONVENTIONS.md, "Docker socket exceptions"): Wolf creates/removes app containers
+      # per session and only talks to a unix socket (WOLF_DOCKER_SOCKET does
+      # not support tcp), so docker-socket-proxy cannot be used.
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /dev:/dev:rw
+      - /run/udev:/run/udev:rw
+    devices:
+      - /dev/dri
+      - /dev/uinput
+      - /dev/uhid
+    device_cgroup_rules:
+      - "c 13:* rmw"

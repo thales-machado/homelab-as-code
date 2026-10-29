@@ -1,0 +1,32 @@
+services:
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 1024m
+    pids_limit: 64
+    # Published on urahara's LAN IP: Traefik (runs only on zangetsu) reaches
+    # this private service on another host by IP:port via its file provider.
+    ports:
+      - "192.168.10.215:8080:8080"
+    volumes:
+      - /opt/apps/stirling-pdf/training-data:/usr/share/tessdata
+      - /opt/apps/stirling-pdf/config:/configs
+    env_file:
+      - path: ${HOMELAB_ENV}
+        required: false
+    environment:
+      - TZ=${TZ}
+      - DOCKER_ENABLE_SECURITY=true
+      - SECURITY_ENABLELOGIN=true
+      - SECURITY_INITIALLOGIN_USERNAME=${ADMIN_USER}
+      - SECURITY_INITIALLOGIN_PASSWORD=${ADMIN_PASSWORD}
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+      # Default 96m Metaspace causes OOM on Stirling 2.x
+      - JAVA_CUSTOM_OPTS=-XX:MaxMetaspaceSize=256m
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks:
+      - cloudflare-net
+

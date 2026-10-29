@@ -1,0 +1,109 @@
+services:
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: evolution-redis
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 128m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    # Tag "7-alpine": no Watchtower label, never auto-updated
+    # (deliberate, stateful component).
+
+  evolution-db:
+    image: postgres:16-alpine
+    container_name: evolution-db
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EVOLUTION_DBUSER} -d evolution"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # Published on urahara's LAN IP so postgres-exporter/backup-postgres.sh
+    # (on zangetsu) can reach it. Same pattern as paperless-db (5432),
+    # immich-db (5433) and tandoor-db (5434), next free port.
+    ports:
+      - "192.168.10.215:5435:5432"
+    volumes:
+      - /opt/apps/evolution-api/db:/var/lib/postgresql/data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=${EVOLUTION_DBUSER}
+      - POSTGRES_PASSWORD=${EVOLUTION_DBPASS}
+      - POSTGRES_DB=evolution
+    networks:
+      - cloudflare-net
+    # Tag "16-alpine": no Watchtower label, never auto-updated
+    # (deliberate, database).
+
+  evolution-api:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution-api
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 1024m
+    pids_limit: 256
+    depends_on:
+      evolution-db:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - SERVER_TYPE=http
+      - SERVER_PORT=8080
+      - SERVER_URL=https://evo-api.lan.example.com
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - "DATABASE_CONNECTION_URI=postgresql://${EVOLUTION_DBUSER}:${EVOLUTION_DBPASS}@evolution-db:5432/evolution?schema=evolution_api"
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://evolution-redis:6379/0
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_LOCAL_ENABLED=false
+      # Native metrics on /metrics, scraped without a token (same network
+      # trust as the other internal exporters; never exposed outside
+      # cloudflare-net).
+      - PROMETHEUS_METRICS=true
+      - METRICS_AUTH_REQUIRED=false
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks:
+      - cloudflare-net
+    # No Traefik labels: this runs on urahara, and Traefik only discovers
+    # containers on its own host. The route comes from the file provider
+    # (infra/platform/networking/traefik/config/dynamic/cross-host.yml).
+    # Published on the LAN so Traefik (zangetsu) and VictoriaMetrics can reach it.
+    ports:
+      - "192.168.10.215:8094:8080"

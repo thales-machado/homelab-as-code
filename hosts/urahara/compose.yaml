@@ -1,0 +1,44 @@
+name: homelab
+
+networks:
+  cloudflare-net:
+    driver: bridge
+    name: cloudflare-net
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+          gateway: 172.23.0.1
+  dockflare-internal:
+    name: dockflare-internal
+    driver: bridge
+
+# Add fragments here as services are migrated to or created on this host.
+include:
+  - ../../infra/automation/n8n/n8n.yaml
+  - ../../infra/content/immich/immich.yaml
+  - ../../infra/integration/evolution-api/evolution-api.yaml
+  - ../../infra/content/paperless-ngx/paperless-ngx.yaml
+  - ../../infra/content/stirling-pdf/stirling-pdf.yaml
+  - ../../infra/content/tandoor/tandoor.yaml
+  - ../../infra/media-player/samba/samba.yaml
+  - ../../infra/media-player/sync/rclone/rclone.yaml
+  - ../../infra/media-player/wolf/wolf.yaml
+  - ../../infra/observability/logs/grafana-alloy/grafana-alloy.yaml
+  - ../../infra/observability/metrics/exporters/cadvisor/cadvisor.yaml
+  - ../../infra/observability/metrics/exporters/node-exporter/node-exporter.yaml
+  - ../../infra/observability/metrics/exporters/redis-exporter/redis-exporter-urahara.yaml
+  - ../../infra/observability/metrics/exporters/smartctl-exporter/smartctl-exporter.yaml
+  - ../../infra/observability/monitoring/dozzle-agent/dozzle-agent.yaml
+  - ../../infra/platform/management/autoheal/autoheal.yaml
+  - ../../infra/platform/management/watchtower/watchtower.yaml
+  - ../../infra/platform/networking/dockflare-agent/dockflare-agent.yaml
+  - ../../infra/platform/security/crowdsec/crowdsec.yaml
+  - ../../infra/platform/networking/keepalived/keepalived.yaml
+  - ../../infra/platform/networking/pi-hole/pi-hole.yaml
+  - ../../infra/platform/networking/tailscale/tailscale.yaml
+  - ../../infra/smart-home/home-assistant/home-assistant.yaml
+  - ../../infra/utilities/it-tools/it-tools.yaml
+  - ../../infra/utilities/trilium/trilium.yaml
+  - ../../infra/utilities/vikunja/vikunja.yaml
+  - observability-ports.yaml
+  - pi-hole-network.yaml

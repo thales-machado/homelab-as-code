@@ -1,0 +1,23 @@
+services:
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    cpus: 0.10
+    mem_limit: 32m
+    pids_limit: 16
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - DOCKER_SOCK=tcp://docker-socket-proxy:2375
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=10
+      - AUTOHEAL_START_PERIOD=30
+    depends_on:
+      docker-socket-proxy:
+        condition: service_started
+    networks:
+      - dockflare-internal
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

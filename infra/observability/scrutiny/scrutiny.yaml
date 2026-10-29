@@ -1,0 +1,32 @@
+services:
+  scrutiny:
+    image: ghcr.io/analogj/scrutiny:master-omnibus
+    container_name: scrutiny
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 128m
+    pids_limit: 64
+    # cap_add required: smartctl needs raw NVMe access (SYS_RAWIO + SYS_ADMIN)
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN
+    devices:
+      - /dev/nvme0:/dev/nvme0
+      - /dev/nvme0n1:/dev/nvme0n1
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /opt/apps/scrutiny:/opt/scrutiny/config
+      - /run/udev:/run/udev:ro
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.scrutiny.rule: "Host(`scrutiny.lan.example.com`)"
+      traefik.http.routers.scrutiny.entrypoints: "websecure"
+      traefik.http.routers.scrutiny.tls.certresolver: "cloudflare"
+      traefik.http.routers.scrutiny.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.scrutiny.loadbalancer.server.port: "8080"

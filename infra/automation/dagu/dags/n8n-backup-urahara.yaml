@@ -1,0 +1,82 @@
+name: n8n-backup-urahara
+description: Daily consistent backup of n8n's SQLite database + per-workflow export/rename (n8n runs on urahara — first SQLite service there, runs via ssh.run like restic-backup-urahara, before the Restic backup at 02:45)
+
+schedule: "CRON_TZ=America/Sao_Paulo 35 2 * * *"
+
+steps:
+  - name: backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      shell: /bin/sh
+      command: >-
+        docker run --rm
+        -v /opt/homelab/scripts:/opt/homelab/scripts:ro
+        -v /opt/apps/n8n:/opt/apps/n8n
+        alpine:3
+        sh -c "apk add --no-cache --quiet sqlite && sh /opt/homelab/scripts/backup/backup-n8n-sqlite.sh"
+
+  # Native n8n export (CLI). Needs the `n8n` binary, so it can't run in the
+  # alpine container of the step above. Writes one JSON per workflow, named
+  # by ID only; the next step renames them to the workflow name via the API.
+  - name: export-n8n-workflows
+    depends:
+      - backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      shell: /bin/sh
+      # The official n8n image does not expose `sh` in the entrypoint (it only
+      # accepts `n8n` subcommands as direct argv). Confirmed in production
+      # ("Error: Command \"sh\" not found"), hence no sh -c here. The output
+      # directory already exists and is owned by uid 1000 thanks to the
+      # previous "backup" step (backup-n8n-sqlite.sh).
+      command: >-
+        docker run --rm
+        -v /opt/apps/n8n:/home/node/.n8n
+        n8nio/n8n:latest
+        export:workflow --backup --output=/home/node/.n8n/db-backup/workflows-json/
+
+  - name: rename-n8n-workflow-backups
+    depends:
+      - export-n8n-workflows
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      # Explicit shell: without it Dagu unescapes \$ before sending over SSH
+      # (same quirk documented in restic-backup-urahara), so $envf/$(...)
+      # would be evaluated too early by the remote shell, before the
+      # container even exists.
+      shell: /bin/sh
+      command: >-
+        docker run --rm
+        -v /opt/homelab/scripts:/opt/homelab/scripts:ro
+        -v /opt/homelab/hosts/urahara/.env:/opt/homelab/hosts/urahara/.env:ro
+        -v /opt/apps/n8n:/opt/apps/n8n
+        --network cloudflare-net
+        alpine:3
+        sh -c "apk add --no-cache --quiet curl jq && envf=/opt/homelab/hosts/urahara/.env; export N8N_API_KEY=\$(grep '^N8N_API_KEY=' \$envf | cut -d= -f2-); sh /opt/homelab/scripts/backup/rename-n8n-workflow-backups.sh && wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

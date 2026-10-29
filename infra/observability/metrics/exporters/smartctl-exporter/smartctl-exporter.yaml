@@ -1,0 +1,18 @@
+services:
+  smartctl-exporter:
+    image: matusnovak/prometheus-smartctl:latest
+    container_name: smartctl-exporter
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    privileged: true
+    devices:
+      - /dev/nvme0:/dev/nvme0
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+

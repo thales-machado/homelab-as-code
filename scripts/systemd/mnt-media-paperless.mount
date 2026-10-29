@@ -1,0 +1,15 @@
+[Unit]
+Description=Paperless media library (NAS)
+After=network-online.target
+Wants=network-online.target
+OnFailure=notify-paperless-mount-failure.service
+
+[Mount]
+What=//192.168.10.200/lemon-drive/media/paperless
+Where=/mnt/media/paperless
+Type=cifs
+TimeoutSec=30s
+Options=credentials=/etc/.nas-credentials,uid=1000,gid=1000,file_mode=0644,dir_mode=0755,vers=3.0,nofail,soft
+
+[Install]
+WantedBy=multi-user.target

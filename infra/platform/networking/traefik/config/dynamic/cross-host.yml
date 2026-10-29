@@ -1,0 +1,162 @@
+# Services outside zangetsu. Traefik only discovers containers on the host
+# where its Docker provider runs, so these are added here manually (IP:port)
+# (192.168.10.215 = urahara, 192.168.10.220 = Headroom, 192.168.10.200 = QNAP).
+http:
+  routers:
+    rclone:
+      rule: "Host(`rclone.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: rclone
+    headroom:
+      rule: "Host(`headroom.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "headroom-redirect", "security-headers"]
+      service: headroom
+    nas:
+      rule: "Host(`nas.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers-frameable"]
+      service: nas
+    evolution-api:
+      rule: "Host(`evo-api.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: evolution-api
+    immich:
+      rule: "Host(`immich.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: immich
+    paperless:
+      rule: "Host(`paperless.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: paperless
+    stirling:
+      rule: "Host(`stirling.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: stirling
+    tandoor:
+      rule: "Host(`tandoor.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: tandoor
+    it-tools:
+      rule: "Host(`it-tools.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: it-tools
+    trilium:
+      rule: "Host(`trilium.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: trilium
+    vikunja:
+      rule: "Host(`vikunja.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: vikunja
+    homeassistant:
+      rule: "Host(`homeassistant.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: homeassistant
+    n8n:
+      rule: "Host(`n8n.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: n8n
+    wolf:
+      rule: "Host(`wolf.lan.example.com`)"
+      entrypoints: ["websecure"]
+      tls: { certresolver: cloudflare }
+      middlewares: ["crowdsec", "security-headers"]
+      service: wolf
+
+  middlewares:
+    headroom-redirect:
+      redirectRegex:
+        regex: "^https://headroom\\.lan\\.admin\\.me/$$"
+        replacement: "https://headroom.lan.example.com/dashboard"
+        permanent: true
+
+  services:
+    rclone:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:5572"
+    headroom:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.220:8787"
+    nas:
+      loadBalancer:
+        serversTransport: nas-insecure
+        servers:
+          - url: "https://192.168.10.200:8443"
+    evolution-api:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8094"
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:2283"
+    paperless:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8000"
+    stirling:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8080"
+    tandoor:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8083"
+    it-tools:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8092"
+    trilium:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8091"
+    vikunja:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:3456"
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8123"
+    n8n:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:8097"
+    # Only the Moonlight pairing page (/pin/#<secret>). The stream itself
+    # (47984/47989/48010 TCP, 47999/48100/48200 UDP) goes straight to
+    # urahara's IP, without Traefik.
+    wolf:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.215:47989"
+
+  serversTransports:
+    nas-insecure:
+      insecureSkipVerify: true

@@ -1,0 +1,656 @@
+apiVersion: 1
+
+groups:
+    - orgId: 1
+      name: homelab
+      folder: Homelab Alerts
+      interval: 1m
+      rules:
+        - uid: disk-full
+          title: Disk almost full
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint='/'} / node_filesystem_size_bytes{mountpoint='/'})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 85
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '{{ $values.A.Value }}% used on root disk (threshold 85%)'
+          labels:
+            severity: warning
+            shortname: DISCO
+          isPaused: false
+        - uid: cpu-temp
+          title: High CPU temperature
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_thermal_zone_temp{zone='0'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 75
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '{{ $values.A.Value }}°C (threshold 75°C)'
+          labels:
+            severity: warning
+            shortname: CPU
+          isPaused: false
+        - uid: ram-high
+          title: High RAM usage
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 90
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            summary: '{{ $values.A.Value }}% used (threshold 90%)'
+          labels:
+            severity: warning
+            shortname: RAM
+          isPaused: false
+        - uid: target-down
+          title: Monitoring target down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: up
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[{{ $labels.job }}] - {{ if (lt $values.A.Value 1.0) }}{{ $labels.instance }} not responding{{ else }}{{ $labels.instance }} responding again{{ end }}'
+          labels:
+            severity: warning
+            shortname: SERVIÇO
+          isPaused: false
+        - uid: mount-immich-active
+          title: Immich mount (NAS) down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_filesystem_device_error{mountpoint='/mnt/media/immich'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[immich] - {{ if (gt $values.A.Value 0.0) }}not responding (NAS CIFS){{ else }}connectivity restored{{ end }}'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-immich-space
+          title: Immich mount (NAS) space high
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint='/mnt/media/immich'} / node_filesystem_size_bytes{mountpoint='/mnt/media/immich'})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 85
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            summary: '[immich] - {{ $values.A.Value }}% used (threshold 85%)'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-remote-active
+          title: Google Drive mount (rclone) down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_filesystem_device_error{mountpoint='/mnt/remote'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[gdrive] - {{ if (gt $values.A.Value 0.0) }}not responding (rclone quota unreliable for space){{ else }}connectivity restored{{ end }}'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-paperless-active
+          title: Paperless mount (NAS) down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_filesystem_device_error{mountpoint='/mnt/media/paperless'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[paperless] - {{ if (gt $values.A.Value 0.0) }}not responding (NAS CIFS){{ else }}connectivity restored{{ end }}'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-paperless-space
+          title: Paperless mount (NAS) space high
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint='/mnt/media/paperless'} / node_filesystem_size_bytes{mountpoint='/mnt/media/paperless'})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 85
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            summary: '[paperless] - {{ $values.A.Value }}% used (threshold 85%)'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-backup-active
+          title: Backup mount (Restic) down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_filesystem_device_error{mountpoint=~'/mnt/backup/.*'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[backup-restic] - {{ if (gt $values.A.Value 0.0) }}not responding (NAS CIFS){{ else }}connectivity restored{{ end }}'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-backup-space
+          title: Backup mount (Restic) space high
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint=~'/mnt/backup/.*'} / node_filesystem_size_bytes{mountpoint=~'/mnt/backup/.*'})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 85
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 10m
+          annotations:
+            summary: '[backup-restic] - {{ $values.A.Value }}% used (threshold 85%)'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: mount-retro-active
+          title: games-4tb disk (retro/Wolf) down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: node_filesystem_device_error{mountpoint='/mnt/games-4tb'}
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[games-4tb] - {{ if (gt $values.A.Value 0.0) }}disk error (local, formerly NAS){{ else }}back to normal{{ end }}'
+          labels:
+            severity: warning
+            shortname: MOUNT
+          isPaused: false
+        - uid: wolf-down
+          title: Wolf (retro streaming) stopped
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: time() - max(container_last_seen{name='wolf',host='urahara'})
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 120
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: Alerting
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[wolf] - {{ if (gt $values.A.Value 120.0) }}container stopped or missing cAdvisor metrics{{ else }}container back up{{ end }}'
+          labels:
+            severity: warning
+            shortname: WOLF
+          isPaused: false
+        - uid: container-oom
+          title: Container OOM killed
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: increase(container_oom_events_total{name!=""}[5m])
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 0s
+          annotations:
+            summary: '[{{ $labels.host }}] - container "{{ $labels.name }}" was OOM killed'
+          labels:
+            severity: warning
+            shortname: OOM
+          isPaused: false
+        - uid: traefik-backend-down
+          title: Traefik cannot connect to a backend
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: efswmxbcxua68c
+              model:
+                queryType: instant
+                expr: 'sum by (backend) (count_over_time({container="traefik"} |~ "connect: connection refused" | json | label_format backend=routerName [5m]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 3
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            summary: '[{{ $labels.backend }}] - {{ $values.A.Value }} failures in the last 5m'
+          labels:
+            severity: warning
+            shortname: TRAEFIK
+            host: zangetsu
+          isPaused: false
+        - uid: unifi-ap-down
+          title: AP UniFi offline
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                # Time since the last sample per AP (keeps the "name" label).
+                # Never drops out of the query the way count(uptime_seconds)
+                # did; that old approach got stuck before "resolved", because
+                # a vanished series has no new value to re-evaluate.
+                # last_over_time+timestamp() gives a continuous per-device
+                # staleness signal: rises when the AP stops reporting, back
+                # to ~0 when it reconnects.
+                expr: time() - timestamp(last_over_time(unpoller_device_uptime_seconds{type="uap"}[24h]))
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 300
+                        type: gt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 1m
+          annotations:
+            summary: '{{ $labels.name }} - {{ if (gt $values.A.Value 300.0) }}offline{{ else }}back online{{ end }}'
+          labels:
+            severity: warning
+            shortname: UNIFI
+            host: AP
+          isPaused: false
+        - uid: unifi-wan-down
+          title: UniFi uplink/WAN degraded
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ffssrfrz5yxogd
+              model:
+                expr: unpoller_wan_uptime_percentage
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 99
+                        type: lt
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '[{{ $labels.wan_name }}] - uptime {{ $values.A.Value }}% (expected ≥99%)'
+          labels:
+            severity: warning
+            shortname: UNIFI
+            host: WAN
+          isPaused: false
+
+# Orphan rules removed via file (deleteRules). Grafana does not delete a
+# file-provisioned rule just because it disappeared from groups: above
+# (known, documented bug; X-Disable-Provenance does not work for deleting via
+# the API, confirmed in production when removing caddy-backend-down after the
+# move to Traefik). They must be declared here.
+deleteRules:
+    - orgId: 1
+      uid: caddy-backend-down

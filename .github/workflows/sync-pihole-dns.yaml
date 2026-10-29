@@ -1,0 +1,42 @@
+name: Sync Pi-hole DNS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/platform/networking/pi-hole/config/pihole-dns.yaml'
+
+jobs:
+  sync:
+    # Deploys only from the private repo; this public copy is not wired to the hosts.
+    if: github.repository == 'thales-machado/homelab'
+    name: Trigger Pi-hole DNS sync via n8n
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Trigger n8n webhook
+        run: |
+          PAYLOAD='{"action":"sync-pihole-dns"}'
+
+          SIGNATURE="sha256=$(echo -n "$PAYLOAD" | \
+            openssl dgst -sha256 -hmac "${{ secrets.N8N_WEBHOOK_SECRET }}" | \
+            awk '{print $2}')"
+
+          HTTP_STATUS=$(curl -s -o /tmp/n8n_response.json -w "%{http_code}" \
+            -X POST "https://n8n.example.com/webhook/homelab-ops" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: ${SIGNATURE}" \
+            -d "$PAYLOAD")
+
+          cat /tmp/n8n_response.json
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Webhook failed with status: $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Webhook sent successfully"

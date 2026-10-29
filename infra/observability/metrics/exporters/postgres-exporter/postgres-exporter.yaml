@@ -1,0 +1,26 @@
+services:
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    # No DATA_SOURCE_NAME: multi-target mode via /probe (see
+    # infra/observability/metrics/victoriametrics/prometheus.yml, job
+    # "postgres-exporter"). The old format (comma-separated DSNs) does not
+    # work for multiple databases: the default collectors (pg_stat_database
+    # etc.) only reflected the FIRST DSN, with no "server" label to tell
+    # them apart; only pg_up/version were per-instance. Confirmed on /metrics.
+    command:
+      - --config.file=/etc/postgres_exporter.yml
+    volumes:
+      - /opt/apps/postgres-exporter/postgres_exporter.yml:/etc/postgres_exporter.yml:ro
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks:
+      - cloudflare-net

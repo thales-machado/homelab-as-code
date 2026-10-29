@@ -1,0 +1,17 @@
+**/.env
+*.env
+!**/.env.example
+**/homepage/secrets.yaml
+**/.dag.index
+**/exports/
+!**/exports/.gitkeep
+
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+
+.idea/
+.vscode/
+*.iml

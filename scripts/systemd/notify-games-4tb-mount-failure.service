@@ -1,0 +1,8 @@
+[Unit]
+Description=Notify failure of the games-4tb mount (local games disk) via Homelab Notify (n8n)
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/environment
+ExecStart=/opt/homelab/scripts/networking/notify-mount-failure.sh games-4tb

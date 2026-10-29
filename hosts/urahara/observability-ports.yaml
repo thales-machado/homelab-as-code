@@ -1,0 +1,18 @@
+# urahara-only override: node-exporter.yaml and cadvisor.yaml are
+# host-agnostic (no published port; scraped by container name on the same
+# Docker network). VictoriaMetrics runs only on zangetsu, so it must reach
+# urahara's exporters over the LAN. Same rationale as "Cross-host services
+# (IP:port pattern)" in CONVENTIONS.md, applied to metrics scraping
+# instead of HTTP.
+# cadvisor publishes on 8081 (not 8080) because stirling-pdf already uses
+# 192.168.10.215:8080. The container's internal port stays 8080.
+services:
+  node-exporter:
+    ports:
+      - "192.168.10.215:9100:9100"
+  cadvisor:
+    ports:
+      - "192.168.10.215:8081:8080"
+  smartctl-exporter:
+    ports:
+      - "192.168.10.215:9902:9902"

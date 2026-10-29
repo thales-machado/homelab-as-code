@@ -1,0 +1,309 @@
+---
+# =============================================================================
+# TAB: INFRA
+# =============================================================================
+
+- Platform:
+    - Komodo:
+        icon: komodo.png
+        href: https://komodo.lan.example.com
+        description: Docker Management
+        server: zangetsu
+        container: komodo-core
+        widget:
+          type: komodo
+          url: http://komodo-core:9120
+          key: "{{HOMEPAGE_VAR_KOMODO_KEY}}"
+          secret: "{{HOMEPAGE_VAR_KOMODO_SECRET}}"
+          showSummary: true
+
+    - DockFlare:
+        icon: cloudflare-zero-trust.png
+        href: https://dockflare.lan.example.com
+        description: Tunnel Manager
+        server: zangetsu
+        container: dockflare
+
+    - Traefik:
+        icon: traefik.png
+        href: https://traefik.lan.example.com
+        description: Reverse Proxy
+        server: zangetsu
+        container: traefik
+        widget:
+          type: traefik
+          url: http://traefik:8080
+
+    - Pi-hole:
+        icon: pi-hole.png
+        href: https://pihole.lan.example.com
+        description: DNS & Ad Blocking
+        server: zangetsu
+        container: pi-hole
+        widget:
+          type: pihole
+          url: http://pi-hole
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"
+
+    - Vaultwarden:
+        icon: bitwarden.png
+        href: https://vaultwarden.example.com
+        description: Password Manager
+        server: zangetsu
+        container: vaultwarden
+
+    - Healthchecks:
+        icon: healthchecks.png
+        href: https://healthchecks.lan.example.com
+        description: Job & Cron Monitoring
+        server: zangetsu
+        container: healthchecks
+        widget:
+          type: healthchecks
+          url: http://healthchecks:8000
+          key: "{{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}"
+
+- Observability:
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.lan.example.com/dashboards
+        description: Metrics & Dashboards
+        server: zangetsu
+        container: grafana
+        widget:
+          type: grafana
+          url: http://grafana:3000
+          username: "{{HOMEPAGE_VAR_GRAFANA_USER}}"
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+          fields: ["dashboards", "datasources", "totalalerts", "alertstriggered"]
+
+    - Dozzle:
+        icon: dozzle.png
+        href: https://dozzle.lan.example.com
+        description: Container Logs
+        server: zangetsu
+        container: dozzle
+
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: https://uptime-kuma.lan.example.com
+        description: Uptime Monitoring
+        server: zangetsu
+        container: uptime-kuma
+        widget:
+          type: uptimekuma
+          url: http://uptime-kuma:3001
+          slug: homelab
+
+    - Scrutiny:
+        icon: scrutiny.png
+        href: https://scrutiny.lan.example.com
+        description: Disk Health (S.M.A.R.T)
+        server: zangetsu
+        container: scrutiny
+        widget:
+          type: scrutiny
+          url: http://scrutiny:8080
+
+    - UniFi:
+        icon: unifi.png
+        href: https://unifi.lan.example.com
+        description: Network Controller
+        widget:
+          type: unifi
+          url: https://unifi.lan.example.com
+          username: "{{HOMEPAGE_VAR_UNIFI_USER}}"
+          password: "{{HOMEPAGE_VAR_UNIFI_PASSWORD}}"
+
+    - QNAP:
+        icon: qnap.png
+        href: https://nas.lan.example.com
+        description: NAS Storage
+        widget:
+          type: qnap
+          # QNAP IP directly, not nas.lan.example.com: Traefik only proxies 443, the widget needs the real 8443
+          url: https://192.168.10.200:8443
+          username: "{{HOMEPAGE_VAR_QNAP_USER}}"
+          password: "{{HOMEPAGE_VAR_QNAP_PASSWORD}}"
+
+    - Watchtower (zangetsu):
+        icon: watchtower.png
+        description: Auto Updater
+        server: zangetsu
+        container: watchtower
+        widget:
+          type: watchtower
+          url: http://watchtower:8080
+          key: "{{HOMEPAGE_VAR_WATCHTOWER_ZANGETSU_TOKEN}}"
+
+    - Watchtower (urahara):
+        icon: watchtower.png
+        description: Auto Updater
+        server: urahara
+        container: watchtower
+        widget:
+          type: watchtower
+          # Watchtower's published port on urahara (WATCHTOWER_PORT in its .env):
+          # 8084, the only port confirmed free (8080=stirling-pdf, 8081=cadvisor,
+          # 8082/8083 also taken).
+          url: http://192.168.10.215:8084
+          key: "{{HOMEPAGE_VAR_WATCHTOWER_URAHARA_TOKEN}}"
+
+- Automation:
+    - Dagu:
+        icon: sh-dagu-dark.png
+        href: https://dagu.lan.example.com
+        description: DAG Workflow Scheduler
+        server: zangetsu
+        container: dagu
+
+    - N8N:
+        icon: n8n.png
+        href: https://n8n.example.com
+        description: Workflow Automation
+        server: urahara
+        container: n8n
+
+    - Evolution API:
+        icon: /icons/evolution-api.png
+        href: https://evo-api.lan.example.com/manager
+        description: WhatsApp Gateway API
+        server: urahara
+        container: evolution-api
+
+- AI:
+    - Headroom:
+        icon: /icons/headroom.png
+        href: https://headroom.lan.example.com
+        description: LLM Context Optimizer
+        widget:
+          type: customapi
+          url: http://192.168.10.220:8787/stats
+          refreshInterval: 30000
+          mappings:
+            - field: tokens_saved
+              label: Tokens Saved
+              format: number
+            - field: cost_saved_usd
+              label: Cost Saved
+              format: text
+              prefix: "$"
+            - field: requests_total
+              label: Requests
+              format: number
+
+# =============================================================================
+# TAB: APPS
+# =============================================================================
+
+- Finance:
+    - Firefly III:
+        icon: firefly.png
+        href: https://firefly.lan.example.com
+        description: Personal Finance Manager
+        server: zangetsu
+        container: firefly-iii
+        widget:
+          type: firefly
+          url: http://firefly-iii:8080
+          key: "{{HOMEPAGE_VAR_FIREFLY_TOKEN}}"
+
+- Content:
+    - Paperless-ngx:
+        icon: paperless.png
+        href: https://paperless.lan.example.com
+        description: Document Management
+        server: urahara
+        container: paperless-ngx
+        widget:
+          type: paperlessngx
+          url: http://192.168.10.215:8000
+          username: "{{HOMEPAGE_VAR_PAPERLESS_USER}}"
+          password: "{{HOMEPAGE_VAR_PAPERLESS_PASSWORD}}"
+
+    - Stirling PDF:
+        icon: stirling-pdf.png
+        href: https://stirling.lan.example.com
+        description: PDF Toolkit
+        server: urahara
+        container: stirling-pdf
+
+    - Immich:
+        icon: immich.png
+        href: https://immich.lan.example.com
+        description: Photo Management
+        server: urahara
+        container: immich-server
+        widget:
+          type: immich
+          url: http://192.168.10.215:2283
+          key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
+          version: 2
+
+    - TandoorRecipes:
+        # "tandoor" is not in Homepage's default icon pack (dashboard-icons),
+        # so use the official logo straight from the project repo.
+        icon: https://raw.githubusercontent.com/vabene1111/recipes/develop/docs/logo_color.svg
+        href: https://tandoor.lan.example.com
+        description: Recipe Manager
+        server: urahara
+        container: tandoor
+        # Widget has no key yet: generate an API key (Settings -> API ->
+        # Generate, scope read) after initial setup.
+        widget:
+          type: tandoor
+          url: http://192.168.10.215:8083
+          key: "{{HOMEPAGE_VAR_TANDOOR_KEY}}"
+
+- Smart Home:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://homeassistant.lan.example.com
+        description: Home Automation
+        server: urahara
+        container: home-assistant
+        # Widget has no key yet: generate a Long-Lived Access Token in the
+        # user profile after initial onboarding.
+        widget:
+          type: homeassistant
+          url: http://192.168.10.215:8123
+          key: "{{HOMEPAGE_VAR_HOMEASSISTANT_KEY}}"
+
+- Utilities:
+    - IT-Tools:
+        icon: it-tools.png
+        href: https://it-tools.example.com
+        description: Developer Tools
+        server: urahara
+        container: it-tools
+
+    - TriliumNext:
+        icon: trilium.png
+        href: https://trilium.lan.example.com
+        description: Notes & Knowledge Base
+        server: urahara
+        container: trilium
+
+    - OpenSpeedTest:
+        icon: openspeedtest.png
+        href: https://speedtest.lan.example.com
+        description: Network Speed Test
+        server: zangetsu
+        container: openspeedtest
+
+    - Vikunja:
+        icon: vikunja.png
+        href: https://vikunja.lan.example.com
+        description: Task Management
+        server: urahara
+        container: vikunja
+
+    - Wolf:
+        # "wolf"/"moonlight" are not in Homepage's default icon pack
+        # (dashboard-icons), so use Sunshine's (same Moonlight protocol).
+        icon: sunshine.png
+        href: https://wolf.lan.example.com
+        description: Retro Game Streaming
+        server: urahara
+        container: wolf

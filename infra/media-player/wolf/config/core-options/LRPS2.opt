@@ -1,0 +1,2 @@
+pcsx2_renderer = "OpenGL"
+pcsx2_upscale_multiplier = "2x Native (~720p)"

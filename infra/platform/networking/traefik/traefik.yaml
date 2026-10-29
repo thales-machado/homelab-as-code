@@ -1,0 +1,60 @@
+# Traefik - private reverse proxy (*.lan.example.com), access restricted to
+# LAN/VPN. Routing via Docker labels (same pattern as DockFlare;
+# exposedByDefault: false - only containers with traefik.enable: "true" are
+# exposed). zangetsu services use labels in their own yaml; urahara services
+# (Traefik only sees containers on the host where its Docker provider runs)
+# use the file provider (config/dynamic/).
+# Public certificate via Let's Encrypt (DNS-01/Cloudflare, resolver
+# "cloudflare").
+services:
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /opt/apps/traefik/dynamic:/etc/traefik/dynamic:ro
+      - /opt/apps/traefik/acme:/etc/traefik/acme
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # DNS-01 (resolver "cloudflare"): reuses the DockFlare token (already
+      # has Zone:DNS:Edit on the example.com zone). Switch to a dedicated
+      # CF_DNS_API_TOKEN for a scope isolated from DockFlare.
+      - CLOUDFLARE_DNS_API_TOKEN=${CF_API_TOKEN}
+      # lego's default timeout (120s) was exceeded on the initial wildcard
+      # issuance: apex and wildcard use the same TXT record name
+      # (_acme-challenge.lan.example.com), solved sequentially. Between the
+      # cleanup of the wildcard challenge and the creation of the apex
+      # challenge, public resolvers (1.1.1.1/1.0.0.1) keep returning the old
+      # cached value until the TTL expires, delaying propagation past 120s.
+      # Confirmed in production ("did not return the expected TXT record"
+      # error, timeout).
+      - CLOUDFLARE_PROPAGATION_TIMEOUT=300
+      - CLOUDFLARE_POLLING_INTERVAL=5
+    networks:
+      - cloudflare-net
+    labels:
+      # Pinned tag (>=v3.6, needs Docker API version auto-negotiation; v3.5
+      # and earlier have a client fixed at 1.24, which breaks with Docker 29+).
+      # No Watchtower label, versions managed manually.
+      # tls.domains declares the wildcard explicitly: this triggers issuance
+      # of the single *.lan.example.com certificate the first time this router
+      # comes up, and every other router reuses that cert from the store (SNI
+      # match) without repeating tls.domains.
+      traefik.enable: "true"
+      traefik.http.routers.traefik-dashboard.rule: "Host(`traefik.lan.example.com`)"
+      traefik.http.routers.traefik-dashboard.entrypoints: "websecure"
+      traefik.http.routers.traefik-dashboard.tls.certresolver: "cloudflare"
+      traefik.http.routers.traefik-dashboard.tls.domains[0].main: "lan.example.com"
+      traefik.http.routers.traefik-dashboard.tls.domains[0].sans: "*.lan.example.com"
+      traefik.http.routers.traefik-dashboard.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.routers.traefik-dashboard.service: "api@internal"

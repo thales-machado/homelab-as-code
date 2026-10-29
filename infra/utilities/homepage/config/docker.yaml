@@ -1,0 +1,11 @@
+---
+# zangetsu (RPi5): via docker-socket-proxy (never mount the socket directly)
+zangetsu:
+  host: docker-socket-proxy
+  port: 2375
+
+# urahara (GMKtec K8): via docker-socket-proxy published on the LAN
+# (same container dockflare-agent uses, see dockflare-agent.yaml)
+urahara:
+  host: 192.168.10.215
+  port: 2375

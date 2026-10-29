@@ -1,0 +1,33 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: victoriametrics
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    command:
+      - -retentionPeriod=3M
+      - -storageDataPath=/storage
+      - -promscrape.config=/etc/vm/prometheus.yml
+    environment:
+      - TZ=${TZ}
+    extra_hosts:
+      - "host.gateway:host-gateway"
+    volumes:
+      - /opt/apps/victoriametrics/data:/storage
+      - /opt/apps/victoriametrics/prometheus.yml:/etc/vm/prometheus.yml:ro
+      # Credentials for the watchtower/rclone jobs (authenticated scrape). Files
+      # are populated manually outside the repo, never committed (same pattern
+      # as acme.json). See bearer_token_file/basic_auth in prometheus.yml.
+      - /opt/apps/victoriametrics/secrets:/etc/vm/secrets:ro
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.victoriametrics.rule: "Host(`victoriametrics.lan.example.com`)"
+      traefik.http.routers.victoriametrics.entrypoints: "websecure"
+      traefik.http.routers.victoriametrics.tls.certresolver: "cloudflare"
+      traefik.http.routers.victoriametrics.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.victoriametrics.loadbalancer.server.port: "8428"

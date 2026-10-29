@@ -1,0 +1,15 @@
+[Unit]
+Description=Restic backup repository (NAS) - urahara
+After=network-online.target
+Wants=network-online.target
+OnFailure=notify-backup-urahara-mount-failure.service
+
+[Mount]
+What=//192.168.10.200/nas-drive/backup/servers/urahara/restic
+Where=/mnt/backup/urahara
+Type=cifs
+TimeoutSec=30s
+Options=credentials=/etc/.nas-credentials,uid=1000,gid=1000,file_mode=0644,dir_mode=0755,vers=3.0,nofail,soft
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+services:
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - REDIS_ADDR=redis://dockflare-redis:6379
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks:
+      - cloudflare-net
+

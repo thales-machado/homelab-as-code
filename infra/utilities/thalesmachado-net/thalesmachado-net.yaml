@@ -1,0 +1,66 @@
+services:
+  thalesmachado-net:
+    # Separate repo (static Astro, github.com/thales-machado/thalesmachado.net).
+    # Published to GHCR by the repo's own CI (multi-arch build+push); the
+    # image name is the literal repo name (with the dot, "thalesmachado.net").
+    # The package is private, but zangetsu already has GHCR credentials
+    # (set up for whatsapp-gw/wa-courier), so pull works with no extra setup.
+    image: ghcr.io/thales-machado/thalesmachado.net:latest
+    container_name: thalesmachado-net
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 64m
+    pids_limit: 32
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    depends_on:
+      dockflare:
+        condition: service_healthy
+      thalesmachado-net-containers:
+        condition: service_started
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      # Public only: thalesmachado.net (main domain) + example.com
+      # (transitional) via Cloudflare Tunnel / DockFlare (same tunnel, two
+      # zones; dockflare.zonename overrides the default CF_ZONE_ID only for
+      # rule .0). No dockflare.access.group on purpose: personal portfolio,
+      # must be reachable without MFA (same exception category as
+      # it-tools/immich/vaultwarden/site-typewriter, see CONVENTIONS.md).
+      # example.com will be removed later and the apex left empty (no redirect).
+      dockflare.enable: "true"
+      dockflare.hostname: "example.com"
+      dockflare.service: "http://thalesmachado-net:80"
+      dockflare.0.hostname: "thalesmachado.net"
+      dockflare.0.zonename: "thalesmachado.net"
+      dockflare.0.service: "http://thalesmachado-net:80"
+
+  thalesmachado-net-containers:
+    # Minimal sidecar (Deno, ~30 lines) that only sums container counts from
+    # 2 hosts via the Komodo API; plain nginx cannot reshape/sum JSON from two
+    # calls. It calls komodo-core directly (same network/host, see
+    # containers-sidecar/index.ts) instead of going through
+    # *.lan.example.com/Traefik like the Uptime Kuma endpoint does: Komodo's
+    # location is fixed and known, so no host-agnostic care is needed.
+    build: ./containers-sidecar
+    image: thalesmachado-net-containers:local
+    container_name: thalesmachado-net-containers
+    restart: unless-stopped
+    cpus: 0.10
+    mem_limit: 32m
+    pids_limit: 16
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # Same Komodo pair Homepage/site-typewriter use, reused on purpose
+      # instead of a new dedicated credential (confirmed by the owner).
+      - KOMODO_API_KEY=${KOMODO_API_KEY}
+      - KOMODO_API_SECRET=${KOMODO_API_SECRET}
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

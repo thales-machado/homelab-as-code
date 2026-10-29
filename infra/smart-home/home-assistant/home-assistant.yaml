@@ -1,0 +1,26 @@
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: home-assistant
+    restart: unless-stopped
+    # Documented network exception (like keepalived/tailscale): local device
+    # discovery (mDNS/SSDP, used by HomeKit/Chromecast/etc. integrations)
+    # needs direct multicast/broadcast access on the physical interface,
+    # which the cloudflare-net bridge does not expose. See CONVENTIONS.md
+    # "Network exceptions".
+    network_mode: host
+    cpus: 1.00
+    mem_limit: 512m
+    pids_limit: 128
+    volumes:
+      - /opt/apps/home-assistant/config:/config
+    environment:
+      - TZ=${TZ}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/manifest.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

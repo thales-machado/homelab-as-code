@@ -1,0 +1,55 @@
+# Source config for postgres_exporter (multi-target mode via /probe). NEVER
+# commit a real password, only the __*__ placeholders below. Rendered with
+# real values by scripts/setup/setup-postgres-exporter-config.sh (same pattern
+# as keepalived, see scripts/setup/setup-keepalived.sh) into
+# /opt/apps/postgres-exporter/postgres_exporter.yml, which the container
+# (infra/observability/metrics/exporters/postgres-exporter/postgres-exporter.yaml)
+# mounts read-only.
+#
+# Each auth_module is a separate target in the multi-target scrape
+# (infra/observability/metrics/victoriametrics/prometheus.yml, job
+# "postgres-exporter"). "options: sslmode: disable" becomes an extra DSN
+# parameter, as in the old connection strings.
+auth_modules:
+  firefly:
+    type: userpass
+    userpass:
+      username: __DB_USER__
+      password: __DB_PASSWORD__
+    options:
+      sslmode: disable
+  paperless:
+    type: userpass
+    userpass:
+      username: __PAPERLESS_DBUSER__
+      password: __PAPERLESS_DBPASS__
+    options:
+      sslmode: disable
+  immich:
+    type: userpass
+    userpass:
+      username: __DB_USER__
+      password: __DB_PASSWORD__
+    options:
+      sslmode: disable
+  tandoor:
+    type: userpass
+    userpass:
+      username: __DB_USER__
+      password: __DB_PASSWORD__
+    options:
+      sslmode: disable
+  komodo:
+    type: userpass
+    userpass:
+      username: __DB_USER__
+      password: __DB_PASSWORD__
+    options:
+      sslmode: disable
+  evolution:
+    type: userpass
+    userpass:
+      username: __EVOLUTION_DBUSER__
+      password: __EVOLUTION_DBPASS__
+    options:
+      sslmode: disable

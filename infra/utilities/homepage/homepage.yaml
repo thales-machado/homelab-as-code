@@ -1,0 +1,70 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - /opt/apps/homepage:/app/config
+      - /opt/apps/homepage/icons:/app/public/icons
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - PUID=1000
+      - PGID=1000
+      # homepage:3000 is the internal Docker network hostname Uptime Kuma
+      # uses to monitor the service (see scripts/setup/setup-uptime-kuma.py).
+      # Without it, recent image versions (Next.js 16.3+) reject the Host
+      # header with 400 "Host validation failed".
+      - HOMEPAGE_ALLOWED_HOSTS=homepage.example.com,homepage.lan.example.com,homepage:3000
+      # Shared global credentials
+      - HOMEPAGE_VAR_GRAFANA_PASSWORD=${ADMIN_PASSWORD}
+      - HOMEPAGE_VAR_GRAFANA_USER=${ADMIN_USER}
+      - HOMEPAGE_VAR_PAPERLESS_PASSWORD=${ADMIN_PASSWORD}
+      - HOMEPAGE_VAR_PAPERLESS_USER=${ADMIN_USER}
+      # Per-service tokens
+      - HOMEPAGE_VAR_IMMICH_KEY=${IMMICH_API_KEY}
+      # No value yet: generate each token in the app's UI after its initial
+      # onboarding (see CONVENTIONS.md, "Homepage")
+      - HOMEPAGE_VAR_TANDOOR_KEY=${TANDOOR_API_KEY}
+      - HOMEPAGE_VAR_HOMEASSISTANT_KEY=${HOMEASSISTANT_TOKEN}
+      - HOMEPAGE_VAR_KOMODO_KEY=${KOMODO_API_KEY}
+      - HOMEPAGE_VAR_KOMODO_SECRET=${KOMODO_API_SECRET}
+      - HOMEPAGE_VAR_FIREFLY_TOKEN=${FIREFLY_API_TOKEN}
+      - HOMEPAGE_VAR_HEALTHCHECKS_KEY=${HEALTHCHECKS_API_KEY}
+      - HOMEPAGE_VAR_PIHOLE_KEY=${PIHOLE_API_KEY}
+      - HOMEPAGE_VAR_QNAP_PASSWORD=${QNAP_PASSWORD}
+      - HOMEPAGE_VAR_QNAP_USER=${QNAP_USER}
+      - HOMEPAGE_VAR_UNIFI_PASSWORD=${UNIFI_PASSWORD}
+      - HOMEPAGE_VAR_UNIFI_USER=unpoller
+      # Local instance (same .env as zangetsu's watchtower.yaml). The urahara
+      # instance uses a separate token, copied here from its .env (two hosts,
+      # two independent .env files).
+      - HOMEPAGE_VAR_WATCHTOWER_ZANGETSU_TOKEN=${WATCHTOWER_HTTP_API_TOKEN}
+      - HOMEPAGE_VAR_WATCHTOWER_URAHARA_TOKEN=${WATCHTOWER_URAHARA_HTTP_API_TOKEN}
+    depends_on:
+      dockflare:
+        condition: service_healthy
+    networks:
+      - cloudflare-net
+      - dockflare-internal
+    labels:
+      dockflare.enable: "true"
+      com.centurylinklabs.watchtower.enable: "true"
+      dockflare.hostname: "homepage.example.com"
+      dockflare.service: "http://homepage:3000"
+      dockflare.access.group: "homelab-admin"
+      traefik.enable: "true"
+      traefik.http.routers.homepage.rule: "Host(`homepage.lan.example.com`)"
+      traefik.http.routers.homepage.entrypoints: "websecure"
+      traefik.http.routers.homepage.tls.certresolver: "cloudflare"
+      traefik.http.routers.homepage.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.homepage.loadbalancer.server.port: "3000"

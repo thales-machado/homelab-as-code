@@ -1,0 +1,20 @@
+# Catch real errors (syntax, duplicated keys, bad anchors); formatting is not enforced.
+extends: relaxed
+
+rules:
+  line-length: disable
+  indentation: disable
+  braces: disable
+  brackets: disable
+  empty-lines: disable
+  new-lines: disable
+  new-line-at-end-of-file: disable
+  trailing-spaces: disable
+  comments: disable
+  comments-indentation: disable
+  hyphens: disable
+  colons: disable
+  commas: disable
+  truthy: disable
+  key-duplicates: enable
+  anchors: enable

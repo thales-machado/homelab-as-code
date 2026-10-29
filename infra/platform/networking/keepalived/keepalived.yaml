@@ -1,0 +1,24 @@
+services:
+  keepalived:
+    image: osixia/keepalived:2.3.4
+    container_name: keepalived
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - NET_BROADCAST
+    cpus: 0.10
+    mem_limit: 32m
+    # 16 caused a real "fork error(Resource temporarily unavailable)" in
+    # production (VIP dropped on both hosts at once). The image uses a Go
+    # supervisor (s6-overlay) that spawns several OS runtime threads, and the
+    # cgroup pids controller counts threads, not just processes. 16 overflowed
+    # with supervisor + keepalived + VRRP child process.
+    pids_limit: 64
+    volumes:
+      - /opt/apps/keepalived/keepalived.conf:/etc/keepalived/keepalived.conf:ro
+    # Pinned tag (2.3.4): no Watchtower label, versions managed manually.
+    # See "Docker image policy" in CONVENTIONS.md.
+    environment:
+      - TZ=${TZ}

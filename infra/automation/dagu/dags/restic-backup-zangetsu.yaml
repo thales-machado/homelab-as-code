@@ -1,0 +1,25 @@
+name: restic-backup-zangetsu
+description: Daily backup of zangetsu's /opt and /etc via Restic (runs after sqlite-backup/postgres-backup)
+
+schedule: "CRON_TZ=America/Sao_Paulo 40 2 * * *"
+
+steps:
+  - name: backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: docker.run
+    with:
+      image: alpine:3
+      pull: missing
+      auto_remove: true
+      network:
+        EndpointsConfig:
+          cloudflare-net: {}
+      volumes:
+        - /opt/homelab/scripts:/opt/homelab/scripts:ro
+        - /opt/homelab/hosts/zangetsu/.env:/opt/homelab/hosts/zangetsu/.env:ro
+        - /opt:/source/opt:ro
+        - /etc:/source/etc:ro
+        - /mnt/backup/zangetsu:/repo
+      command: sh -c "envf=/opt/homelab/hosts/zangetsu/.env; export RESTIC_PASSWORD=$(grep '^RESTIC_PASSWORD=' $envf | cut -d= -f2-); apk add --no-cache --quiet restic && sh /opt/homelab/scripts/backup/backup-restic.sh zangetsu && wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

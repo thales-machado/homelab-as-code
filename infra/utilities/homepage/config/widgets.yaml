@@ -1,0 +1,23 @@
+---
+# Header widgets, shown at the top of the page
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    cputemp: true
+    uptime: true
+    units: metric
+    refresh: 3000
+
+- datetime:
+    text_size: xl
+    locale: pt-BR
+    format:
+      dateStyle: short
+      timeStyle: short
+      hour12: false
+
+- search:
+    provider: google
+    focus: true
+    target: _blank

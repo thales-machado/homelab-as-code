@@ -1,0 +1,47 @@
+name: homelab
+
+networks:
+  cloudflare-net:
+    driver: bridge
+    name: cloudflare-net
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1
+  dockflare-internal:
+    name: dockflare-internal
+    driver: bridge
+
+include:
+  - ../../infra/automation/dagu/dagu.yaml
+  - ../../infra/finance/firefly-iii-data-importer/fidi.yaml
+  - ../../infra/finance/firefly-iii/firefly-iii.yaml
+  - ../../infra/observability/logs/grafana-alloy/grafana-alloy.yaml
+  - ../../infra/observability/logs/loki/loki.yaml
+  - ../../infra/observability/metrics/exporters/blackbox-exporter/blackbox-exporter.yaml
+  - ../../infra/observability/metrics/exporters/cadvisor/cadvisor.yaml
+  - ../../infra/observability/metrics/exporters/node-exporter/node-exporter.yaml
+  - ../../infra/observability/metrics/exporters/postgres-exporter/postgres-exporter.yaml
+  - ../../infra/observability/metrics/exporters/redis-exporter/redis-exporter.yaml
+  - ../../infra/observability/metrics/exporters/smartctl-exporter/smartctl-exporter.yaml
+  - ../../infra/observability/metrics/grafana/grafana.yaml
+  - ../../infra/observability/metrics/unpoller/unpoller.yaml
+  - ../../infra/observability/metrics/victoriametrics/victoriametrics.yaml
+  - ../../infra/observability/monitoring/dozzle/dozzle.yaml
+  - ../../infra/observability/monitoring/uptime-kuma/uptime-kuma.yaml
+  - ../../infra/observability/scrutiny/scrutiny.yaml
+  - ../../infra/platform/management/autoheal/autoheal.yaml
+  - ../../infra/platform/management/watchtower/watchtower.yaml
+  - ../../infra/platform/monitoring/healthchecks/healthchecks.yaml
+  - ../../infra/platform/networking/cloudflared-agent/cloudflared-agent.yaml
+  - ../../infra/platform/networking/dockflare/dockflare.yaml
+  - ../../infra/platform/networking/keepalived/keepalived.yaml
+  - ../../infra/platform/networking/nebula-sync/nebula-sync.yaml
+  - ../../infra/platform/networking/pi-hole/pi-hole.yaml
+  - ../../infra/platform/networking/tailscale/tailscale.yaml
+  - ../../infra/platform/networking/traefik/traefik.yaml
+  - ../../infra/platform/security/vaultwarden/vaultwarden.yaml
+  - ../../infra/utilities/homepage/homepage.yaml
+  - ../../infra/utilities/openspeedtest/openspeedtest.yaml
+  - ../../infra/utilities/site-typewriter/site-typewriter.yaml
+  - ../../infra/utilities/thalesmachado-net/thalesmachado-net.yaml

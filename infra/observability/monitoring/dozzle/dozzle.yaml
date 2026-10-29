@@ -1,0 +1,30 @@
+services:
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 64
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # Agent Mode: brings urahara's logs into this instance, no second Dozzle
+      # needed there. The "urahara" label shows as a collapsible sidebar group
+      # (see infra/observability/monitoring/dozzle-agent/dozzle-agent.yaml
+      # for the agent side).
+      - DOZZLE_REMOTE_AGENT=192.168.10.215:7007|urahara
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.dozzle.rule: "Host(`dozzle.lan.example.com`)"
+      traefik.http.routers.dozzle.entrypoints: "websecure"
+      traefik.http.routers.dozzle.tls.certresolver: "cloudflare"
+      traefik.http.routers.dozzle.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.dozzle.loadbalancer.server.port: "8080"
+

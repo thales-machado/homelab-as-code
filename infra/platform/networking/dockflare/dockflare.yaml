@@ -1,0 +1,158 @@
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 64
+    environment:
+      - TZ=${TZ}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - CONTAINERS=1
+      - EVENTS=1
+      - NETWORKS=1
+      - IMAGES=1
+      - POST=1
+      - PING=1
+      - INFO=1
+      - EXEC=1
+      - DISABLE_IPV6=1
+      # Needed for Watchtower to remove old containers/images (WATCHTOWER_CLEANUP)
+      - DELETE=1
+      # Needed for autoheal to restart unhealthy containers
+      - RESTART=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - dockflare-internal
+    # Pinned tag (v0.5.0): no Watchtower label, versions managed manually.
+
+  dockflare-init:
+    image: alpine:3.24
+    container_name: dockflare-init
+    cpus: 0.10
+    mem_limit: 64m
+    pids_limit: 64
+    environment:
+      - TZ=${TZ}
+    command: ["sh", "-c", "chown -R 65532:65532 /app/data"]
+    volumes:
+      - /opt/apps/dockflare:/app/data
+    networks:
+      - cloudflare-net
+    restart: "no"
+    # profiles: init - only runs with `docker compose --profile init up -d
+    # dockflare-init`, never with a plain `docker compose up -d`. Must be run
+    # manually before the first start on a new host or reset volume (chowns
+    # /opt/apps/dockflare to UID 65532, which dockflare runs as). Without it
+    # dockflare fails with a permission error on first start.
+    # Accepted trade-off: without profiles, depends_on:
+    # service_completed_successfully forced dockflare to wait for init on
+    # every stack start (and init stayed in Exited(0) forever, cluttering
+    # Komodo). Komodo has no native label to hide a single container from the
+    # list (`komodo.skip` only affects the bulk "Stop All Containers" action,
+    # not the UI).
+    profiles:
+      - init
+    labels:
+      komodo.skip: ""
+
+  dockflare:
+    image: alplat/dockflare:stable
+    container_name: dockflare
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 512m
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/ping')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - /opt/apps/dockflare:/app/data
+    # Port published only on zangetsu's LAN: DockFlare Agents on other hosts
+    # (e.g. urahara) talk to the master directly by IP, without depending on
+    # the reverse proxy or its TLS cert (dockflare.lan.example.com is served
+    # by Traefik/Let's Encrypt).
+    ports:
+      - "192.168.10.214:5000:5000"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_DB_INDEX=0
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+      - CF_ZONE_ID=${CF_ZONE_ID}
+      - TUNNEL_NAME=lemonpi-5-tunel
+      - LABEL_PREFIX=dockflare
+      - GRACE_PERIOD_SECONDS=28800
+      - CLEANUP_INTERVAL_SECONDS=300
+      - AGENT_STATUS_UPDATE_INTERVAL_SECONDS=10
+      - SCAN_ALL_NETWORKS=false
+      - CLOUDFLARED_NETWORK_NAME=cloudflare-net
+      # External mode: DockFlare does not manage/recreate the cloudflared
+      # container; it only consumes other services' labels to build
+      # ingress/DNS. Without this, DockFlare runs in "managed" mode: it treats
+      # the agent as its own, ignores our pinned tag (assumes 'latest' as
+      # desired even with CLOUDFLARED_IMAGE set - tested, not honored) and
+      # keeps recreating cloudflared-agent-lemonpi-5-tunel outside compose
+      # whenever it detects a "mismatch", colliding with our own docker compose
+      # up (container without compose labels, name collision on every
+      # recreate - the real root cause of the recurring "Conflict: container
+      # name already in use"). The tunnel UUID comes from CF_TUNNEL_TOKEN
+      # itself (payload "t"; the token is base64 of
+      # {"a":account_id,"t":tunnel_id,"s":secret}).
+      - USE_EXTERNAL_CLOUDFLARED=true
+      - EXTERNAL_TUNNEL_ID=${CF_TUNNEL_ID}
+      - MAX_CONCURRENT_DNS_OPS=3
+      - GITHUB_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET}
+    depends_on:
+      cloudflared-agent:
+        condition: service_started
+      docker-socket-proxy:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - cloudflare-net
+      - dockflare-internal
+    labels:
+      dockflare.enable: "false"
+      # "stable" tag (not "latest"): no digits, safe for normal digest
+      # watching.
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.dockflare.rule: "Host(`dockflare.lan.example.com`)"
+      traefik.http.routers.dockflare.entrypoints: "websecure"
+      traefik.http.routers.dockflare.tls.certresolver: "cloudflare"
+      traefik.http.routers.dockflare.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.dockflare.loadbalancer.server.port: "5000"
+
+  redis:
+    image: redis:8-alpine
+    container_name: dockflare-redis
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    cpus: 0.30
+    mem_limit: 192m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - /opt/apps/dockflare:/data
+    networks:
+      - cloudflare-net
+    # "8-alpine" tag: no Watchtower label, never auto-updated (on purpose:
+    # risk of wrong semver coercion in update tools).

@@ -1,0 +1,33 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 128
+    # Published on urahara's LAN: Traefik (zangetsu) needs IP:port to query
+    # the LAPI. External port 8082 (8080 is taken by stirling-pdf on the same
+    # host).
+    ports:
+      - "192.168.10.215:8082:8080"
+      # Prometheus metrics (enabled by default in the official image,
+      # 0.0.0.0:6060). VictoriaMetrics (zangetsu) needs IP:port.
+      - "192.168.10.215:6060:6060"
+    volumes:
+      - /opt/apps/crowdsec/data:/var/lib/crowdsec/data
+      - /opt/apps/crowdsec/config:/etc/crowdsec
+      - ./config/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - GID=1000
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors
+      # Pre-registers the Traefik bouncer via env var (equivalent to running
+      # `cscli bouncers add` manually after the first boot).
+      - BOUNCER_KEY_TRAEFIK=${CROWDSEC_BOUNCER_KEY}
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

@@ -1,0 +1,35 @@
+services:
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    # No network_mode: host, so node_uname_info (label "nodename", used by
+    # the Hosts - Hardware dashboard) reports the CONTAINER hostname, not the
+    # real host's, unless set explicitly. NODE_HOSTNAME is per host (each
+    # host's .env, same pattern as PIHOLE_STATIC_IP: host-agnostic fragment,
+    # value via ${VAR}).
+    hostname: ${NODE_HOSTNAME}
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 128m
+    pids_limit: 32
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
+      # Extra collectors used by the Node Exporter Full dashboard
+      - --collector.processes
+      - --collector.tcpstat
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+

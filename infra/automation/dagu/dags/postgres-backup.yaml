@@ -1,0 +1,32 @@
+name: postgres-backup
+description: Daily consistent backup of the stack's Postgres databases (runs before the Restic backup at 02:40)
+
+schedule: "CRON_TZ=America/Sao_Paulo 35 2 * * *"
+
+steps:
+  - name: backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: docker.run
+    with:
+      # postgres:17 (not 16) on purpose: pg_dump refuses to dump a server
+      # NEWER than itself (confirmed in production: komodo-postgres runs
+      # Postgres 17.6, the FerretDB backend - "aborting because server version
+      # mismatch"). A newer pg_dump always reads older servers fine, so 17
+      # covers the existing 16 databases (paperless/firefly/immich/tandoor) too.
+      image: postgres:17-alpine
+      pull: missing
+      auto_remove: true
+      network:
+        EndpointsConfig:
+          cloudflare-net: {}
+      volumes:
+        - /opt/homelab/scripts:/opt/homelab/scripts:ro
+        - /opt/homelab/hosts/zangetsu/.env:/opt/homelab/hosts/zangetsu/.env:ro
+        - /opt/apps/paperless:/opt/apps/paperless
+        - /opt/apps/firefly-iii:/opt/apps/firefly-iii
+        - /opt/apps/immich:/opt/apps/immich
+        - /opt/apps/tandoor:/opt/apps/tandoor
+        - /opt/apps/komodo:/opt/apps/komodo
+      command: sh -c "envf=/opt/homelab/hosts/zangetsu/.env; export PAPERLESS_DBUSER=paperless; export PAPERLESS_DBPASS=$(grep '^PAPERLESS_DBPASS=' $envf | cut -d= -f2-); export PAPERLESS_DBNAME=paperless; export DB_USER=$(grep '^DB_USER=' $envf | cut -d= -f2-); export DB_PASSWORD=$(grep '^DB_PASSWORD=' $envf | cut -d= -f2-); export FIREFLY_DB_NAME=firefly; export IMMICH_DB_NAME=immich; export TANDOOR_DB_NAME=tandoor; sh /opt/homelab/scripts/backup/backup-postgres.sh && wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

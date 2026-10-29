@@ -1,0 +1,57 @@
+services:
+  n8n:
+    build: .
+    image: n8n-custom:latest
+    container_name: n8n
+    restart: unless-stopped
+    cpus: 2.00
+    mem_limit: 2048m
+    pids_limit: 128
+    user: "1000:1000"
+    group_add:
+      - "1001"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_EDITOR_BASE_URL=https://n8n.example.com
+      - N8N_HOST=n8n.example.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - N8N_PROXY_HOPS=1
+      - N8N_SECURE_COOKIE=false
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs,crypto,path
+      - NODE_FUNCTION_ALLOW_EXTERNAL=ioredis
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY}
+      - GENERIC_TIMEZONE=${TZ}
+      - TZ=${TZ}
+    volumes:
+      - /opt/apps/n8n:/home/node/.n8n
+    depends_on:
+      dockflare-agent:
+        condition: service_started
+    networks:
+      - cloudflare-net
+    # No Traefik labels: this runs on urahara, and Traefik only discovers
+    # containers on its own host. The route comes in via the file provider
+    # (infra/platform/networking/traefik/config/dynamic/cross-host.yml).
+    # Published on the LAN so Traefik (zangetsu) can reach it.
+    ports:
+      - "192.168.10.215:8097:5678"
+    labels:
+      dockflare.enable: "true"
+      dockflare.hostname: "n8n.example.com"
+      dockflare.service: "http://n8n:5678"
+      dockflare.access.group: "homelab-admin"
+      # Webhooks bypass Access (n8n validates them with its own token/path)
+      dockflare.0.hostname: "n8n.example.com"
+      dockflare.0.path: "/webhook"
+      dockflare.0.service: "http://n8n:5678"
+      dockflare.0.access.group: "public-default-bypass"
+      dockflare.1.hostname: "n8n.example.com"
+      dockflare.1.path: "/webhook-test"
+      dockflare.1.service: "http://n8n:5678"
+      dockflare.1.access.group: "public-default-bypass"

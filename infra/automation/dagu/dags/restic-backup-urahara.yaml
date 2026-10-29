@@ -1,0 +1,36 @@
+name: restic-backup-urahara
+description: Daily backup of urahara's /opt and /etc via Restic - runs on zangetsu, executes remotely on urahara via SSH (Dagu does not support a remote DOCKER_HOST per step)
+
+schedule: "CRON_TZ=America/Sao_Paulo 45 2 * * *"
+
+steps:
+  - name: backup
+    retry_policy:
+      limit: 3
+      interval_sec: 900
+    action: ssh.run
+    with:
+      user: admin
+      host: 192.168.10.215
+      port: 22
+      key: /opt/homelab-ssh/id_ed25519
+      known_host_file: /opt/homelab-ssh/known_hosts
+      strict_host_key: true
+      # Explicit shell: without it Dagu runs its own unescape pass on the
+      # command before sending it over SSH, breaking the \$ used below to defer
+      # variable expansion to the shell inside the container. docker run goes
+      # through a real remote shell over SSH (unlike local docker.run, which
+      # calls the Docker API with no shell in between), so unescaped
+      # $(...)/$VAR were evaluated too early by the remote shell, before the
+      # container even existed.
+      shell: /bin/sh
+      command: >-
+        docker run --rm
+        -v /opt/homelab/scripts:/opt/homelab/scripts:ro
+        -v /opt/homelab/hosts/urahara/.env:/opt/homelab/hosts/urahara/.env:ro
+        -v /opt:/source/opt:ro
+        -v /etc:/source/etc:ro
+        -v /mnt/backup/urahara:/repo
+        --network cloudflare-net
+        alpine:3
+        sh -c "envf=/opt/homelab/hosts/urahara/.env; export RESTIC_PASSWORD=\$(grep \"^RESTIC_PASSWORD=\" \$envf | cut -d= -f2-); apk add --no-cache --quiet restic && sh /opt/homelab/scripts/backup/backup-restic.sh urahara && wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://192.168.10.214:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

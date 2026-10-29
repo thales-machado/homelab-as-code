@@ -1,0 +1,44 @@
+services:
+  healthchecks:
+    image: healthchecks/healthchecks:latest
+    container_name: healthchecks
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - SITE_ROOT=https://healthchecks.lan.example.com
+      - SITE_NAME=Healthchecks
+      # 192.168.10.214 is required: the restic-backup-urahara/restic-prune-urahara
+      # DAGs ping via IP:port directly (cross-host, outside zangetsu's docker
+      # network), and Django rejects an unknown Host header with 400 unless it
+      # is in ALLOWED_HOSTS.
+      - ALLOWED_HOSTS=healthchecks.lan.example.com,healthchecks,192.168.10.214
+      - INTEGRATIONS_ALLOW_PRIVATE_IPS=True
+      - DEBUG=False
+      - DB=sqlite
+      - DB_NAME=/data/hc.sqlite
+      - SECRET_KEY=${HEALTHCHECKS_SECRET_KEY}
+      - DEFAULT_FROM_EMAIL=noreply@healthchecks.lan.example.com
+      - SUPERUSER_EMAIL=${ADMIN_EMAIL}
+      - SUPERUSER_PASSWORD=${ADMIN_PASSWORD}
+    volumes:
+      - /opt/apps/healthchecks:/data
+    # Published on zangetsu's LAN: the restic-backup-urahara/restic-prune-urahara
+    # DAGs run via ssh.run directly on urahara (local docker run there), outside
+    # zangetsu's cloudflare-net, so they need IP:port to ping healthchecks.
+    ports:
+      - "192.168.10.214:8000:8000"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.healthchecks.rule: "Host(`healthchecks.lan.example.com`)"
+      traefik.http.routers.healthchecks.entrypoints: "websecure"
+      traefik.http.routers.healthchecks.tls.certresolver: "cloudflare"
+      traefik.http.routers.healthchecks.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.healthchecks.loadbalancer.server.port: "8000"
+    networks:
+      - cloudflare-net

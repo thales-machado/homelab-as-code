@@ -1,0 +1,13 @@
+[Unit]
+Description=Delay to let 2.5GbE NICs finish link negotiation before Docker starts
+After=network-online.target
+Wants=network-online.target
+Before=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sleep 120
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

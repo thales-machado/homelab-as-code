@@ -1,0 +1,66 @@
+services:
+  firefly-db:
+    image: postgres:16-alpine
+    container_name: firefly-db
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d firefly"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - /opt/apps/firefly-iii/db:/var/lib/postgresql/data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=firefly
+    # Tag "16-alpine": no Watchtower label, never auto-updated
+    # (deliberate, database).
+    networks:
+      - cloudflare-net
+
+  firefly-iii:
+    image: fireflyiii/core:latest
+    container_name: firefly-iii
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 512m
+    pids_limit: 128
+    volumes:
+      - /opt/apps/firefly-iii/upload:/var/www/html/storage/upload
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - SITE_OWNER=admin@example.com
+      - APP_KEY=${FIREFLY_APP_KEY}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=firefly-db
+      - DB_PORT=5432
+      - DB_DATABASE=firefly
+      - DB_USERNAME=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - TRUSTED_PROXIES=**
+    depends_on:
+      firefly-db:
+        condition: service_healthy
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.firefly.rule: "Host(`firefly.lan.example.com`)"
+      traefik.http.routers.firefly.entrypoints: "websecure"
+      traefik.http.routers.firefly.tls.certresolver: "cloudflare"
+      traefik.http.routers.firefly.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.firefly.loadbalancer.server.port: "8080"
+

@@ -1,0 +1,22 @@
+name: restic-prune-zangetsu
+description: Weekly prune of zangetsu's Restic repository (GFS retention)
+
+schedule: "CRON_TZ=America/Sao_Paulo 0 4 * * 0"
+
+steps:
+  - name: prune
+    retry_policy:
+      limit: 2
+      interval_sec: 1800
+    action: docker.run
+    with:
+      image: alpine:3
+      pull: missing
+      auto_remove: true
+      network:
+        EndpointsConfig:
+          cloudflare-net: {}
+      volumes:
+        - /opt/homelab/hosts/zangetsu/.env:/opt/homelab/hosts/zangetsu/.env:ro
+        - /mnt/backup/zangetsu:/repo
+      command: sh -c "envf=/opt/homelab/hosts/zangetsu/.env; export RESTIC_PASSWORD=$(grep '^RESTIC_PASSWORD=' $envf | cut -d= -f2-); export RESTIC_REPOSITORY=/repo; apk add --no-cache --quiet restic && restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune && wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000 || { wget -q -O /dev/null http://healthchecks:8000/ping/00000000-0000-0000-0000-000000000000/fail; exit 1; }"

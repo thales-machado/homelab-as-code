@@ -1,0 +1,99 @@
+services:
+  rclone:
+    image: rclone/rclone:latest
+    container_name: rclone
+    restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 1g
+    mem_reservation: 512m
+    pids_limit: 64
+    user: "1000:1000"
+    env_file:
+      - path: ${HOMELAB_ENV}
+        required: false
+    environment:
+      - TZ=${TZ}
+      - HOME=/opt/apps/rclone
+      - XDG_CACHE_HOME=/opt/apps/rclone/.cache
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    # Published on urahara's LAN IP: Caddy (zangetsu) needs IP:port to reach
+    # this service's rc-web-gui from another host.
+    ports:
+      - "192.168.10.215:5572:5572"
+    # Without this, consumers of the mount can start before FUSE is actually
+    # mounted (the process starts fast, the mount takes a few more seconds),
+    # and see an empty directory on cold boot. mountpoint -q confirms
+    # /data/mnt is a real mount, not an empty dir.
+    healthcheck:
+      test: ["CMD", "mountpoint", "-q", "/data/mnt"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    # vfs-cache-mode full (not writes): media players extracting embedded
+    # subtitles (PGS/ASS inside MKV) or seeking must re-read parts of the file.
+    # With "writes" only writes are cached, so every extraction re-downloaded
+    # the bytes from Drive and subtitle loading hung. "full" caches read
+    # blocks on local disk.
+    # tpslimit/bwlimit: the Drive service account is shared with another
+    # media server. Drive API quota is per GCP project + impersonated user,
+    # not per server, so without a throttle a heavy job here (e.g. a full
+    # library scan) can hit the rate limit and break streams elsewhere.
+    command: >
+      mount google: /data/mnt
+      --allow-non-empty
+      --allow-other
+      --buffer-size 64M
+      --bwlimit 8M
+      --config /config/rclone/rclone.conf
+      --dir-cache-time 168h
+      --drive-skip-gdocs
+      --log-level INFO
+      --poll-interval 1m
+      --rc
+      --rc-addr=:5572
+      --rc-enable-metrics
+      --rc-user=${ADMIN_USER}
+      --rc-pass=${ADMIN_PASSWORD}
+      --rc-web-gui
+      --rc-web-gui-no-open-browser
+      --read-only
+      --timeout 10m
+      --tpslimit 3
+      --tpslimit-burst 5
+      --umask 002
+      --vfs-cache-mode full
+      --vfs-cache-max-size 20G
+      --vfs-cache-max-age 24h
+      --vfs-read-chunk-size 64M
+      --vfs-read-chunk-size-limit 2048M
+    volumes:
+      - type: bind
+        source: /opt/apps/rclone
+        target: /opt/apps/rclone
+      - type: bind
+        source: /mnt/remote
+        target: /data/mnt
+        bind:
+          propagation: shared
+      - type: bind
+        source: ./config
+        target: /config/rclone
+        read_only: true
+      - type: bind
+        source: /etc/passwd
+        target: /etc/passwd
+        read_only: true
+      - type: bind
+        source: /etc/group
+        target: /etc/group
+        read_only: true

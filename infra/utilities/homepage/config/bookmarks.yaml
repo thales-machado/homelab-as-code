@@ -1,0 +1,24 @@
+---
+- Cloud:
+    - Cloudflare:
+        - icon: cloudflare.png
+          href: https://dash.cloudflare.com/
+          description: DNS & Tunnels
+    - GitHub:
+        - icon: github.png
+          href: https://github.com/thales-machado/homelab-as-code
+          description: Code Repository
+
+- Network:
+    - UniFi:
+        - icon: unifi.png
+          href: https://unifi.lan.example.com
+          description: Network Controller
+    - QNAP:
+        - icon: qnap.png
+          href: https://nas.lan.example.com
+          description: NAS Storage
+    - Tailscale:
+        - icon: tailscale.png
+          href: https://login.tailscale.com/admin/machines
+          description: Remote access (VPN)

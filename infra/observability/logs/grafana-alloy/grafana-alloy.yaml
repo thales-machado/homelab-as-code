@@ -1,0 +1,23 @@
+services:
+  grafana-alloy:
+    image: grafana/alloy:latest
+    container_name: grafana-alloy
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    volumes:
+      - ./config/alloy.river:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - LOKI_URL=${LOKI_URL:-http://loki:3100/loki/api/v1/push}
+      - HOSTNAME_LABEL=${HOSTNAME_LABEL:-zangetsu}
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+

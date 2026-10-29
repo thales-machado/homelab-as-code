@@ -1,0 +1,36 @@
+services:
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 512m
+    pids_limit: 128
+    user: "0:0"
+    volumes:
+      - /opt/apps/grafana:/var/lib/grafana
+      - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./provisioning/alerting:/etc/grafana/provisioning/alerting
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.lan.example.com
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    depends_on:
+      - victoriametrics
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.grafana.rule: "Host(`grafana.lan.example.com`)"
+      traefik.http.routers.grafana.entrypoints: "websecure"
+      traefik.http.routers.grafana.tls.certresolver: "cloudflare"
+      traefik.http.routers.grafana.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.grafana.loadbalancer.server.port: "3000"
+

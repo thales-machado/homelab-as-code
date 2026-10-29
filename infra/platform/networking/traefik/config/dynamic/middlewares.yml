@@ -1,0 +1,62 @@
+# Shared Traefik middlewares. Versioned source config: NEVER commit the real
+# value of the __CROWDSEC_BOUNCER_KEY__ placeholder. Rendered with the real
+# value by scripts/setup/setup-traefik-config.sh (same pattern as
+# keepalived/postgres-exporter) into /opt/apps/traefik/dynamic/, which the
+# Traefik container mounts read-only.
+#
+# crowdsec: must be referenced per router
+# (traefik.http.routers.<name>.middlewares: crowdsec@file); Traefik does not
+# apply a middleware to every router automatically at the entrypoint level.
+http:
+  middlewares:
+    crowdsec:
+      plugin:
+        crowdsec-bouncer:
+          enabled: true
+          crowdsecMode: live
+          crowdsecLapiScheme: http
+          crowdsecLapiHost: "192.168.10.215:8082"
+          crowdsecLapiKey: "__CROWDSEC_BOUNCER_KEY__"
+
+    pihole-redirect:
+      redirectRegex:
+        regex: "^https://pihole\\.lan\\.admin\\.me/$$"
+        replacement: "https://pihole.lan.example.com/admin/"
+        permanent: true
+
+    # Security headers - native middleware (no plugin). Defense in depth even
+    # on the internal LAN (protects against clickjacking/MIME-sniffing/XSS if
+    # an app has a flaw or a LAN device is compromised).
+    security-headers:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""
+
+    # security-headers variant for apps that frame themselves same-origin on
+    # purpose (QNAP QTS: each "window" of its web desktop, e.g. File Station,
+    # "Painel de Controle", is an iframe pointing at nas.lan.example.com
+    # itself). frameDeny: true blocks framing from ANY origin, including
+    # same-origin, which broke several QNAP apps only when accessed via
+    # Traefik (direct IP access doesn't go through here and gets QNAP's
+    # native headers). customFrameOptionsValue: SAMEORIGIN keeps third-party
+    # clickjacking protection without breaking QTS.
+    security-headers-frameable:
+      headers:
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""

@@ -1,0 +1,62 @@
+services:
+  pi-hole:
+    image: pihole/pihole:latest
+    container_name: pi-hole
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 64
+    cap_add:
+      - CAP_SYS_TIME
+      - CAP_NET_BIND_SERVICE
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    # The official image's healthcheck is shallow (only confirms the process
+    # resolves 127.0.0.1) and misses an internally hung/deadlocked FTL (real
+    # incident: FTL "healthy" but dig from inside the container timed out).
+    # A real query for its own hostname proves end-to-end resolution.
+    healthcheck:
+      test: ["CMD-SHELL", "dig +time=2 +tries=1 @127.0.0.1 pihole.lan.example.com +short || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - /opt/apps/pihole/etc:/etc/pihole
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      # PIHOLE_DNS_ is a legacy v5 env (ignored in v6). Upstreams are set via
+      # FTLCONF so it is the actual source of truth (real drift: Google DNS
+      # got in from elsewhere and was receiving part of the queries).
+      - FTLCONF_dns_upstreams=1.1.1.1;1.0.0.1
+      - FTLCONF_dns_listeningMode=all
+      # Dotless names (local hosts) are never forwarded upstream
+      - FTLCONF_dns_domainNeeded=true
+      # 30d of history is enough and reduces SD card writes (default: 91d)
+      - FTLCONF_database_maxDBdays=30
+      # The default rate limit (1000/60s) is exceeded by the WUD scan on
+      # zangetsu (all containers egress with the host IP; registry-1/auth.docker.io
+      # with no DNS cache in Alpine generate ~2700 queries in minutes). While
+      # rate-limited, Pi-hole refuses DNS for the whole host for ~7s.
+      - FTLCONF_dns_rateLimit_count=4000
+      - FTLCONF_dns_rateLimit_interval=60
+      - FTLCONF_webserver_api_password=${ADMIN_PASSWORD}
+    networks:
+      cloudflare-net:
+        ipv4_address: ${PIHOLE_STATIC_IP:-172.22.0.240}
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      # Consumed by autoheal (infra/platform/management/autoheal): restarts
+      # the container when the healthcheck above reports unhealthy. Docker
+      # doesn't do this natively.
+      autoheal: "true"
+      traefik.enable: "true"
+      traefik.http.routers.pihole.rule: "Host(`pihole.lan.example.com`)"
+      traefik.http.routers.pihole.entrypoints: "websecure"
+      traefik.http.routers.pihole.tls.certresolver: "cloudflare"
+      # redirect / -> /admin/
+      traefik.http.routers.pihole.middlewares: "pihole-redirect@file,crowdsec@file,security-headers@file"
+      traefik.http.services.pihole.loadbalancer.server.port: "80"

@@ -1,0 +1,91 @@
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 128m
+    pids_limit: 64
+    environment:
+      - TZ=${TZ}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - CONTAINERS=1
+      - EVENTS=1
+      - NETWORKS=1
+      - IMAGES=1
+      - POST=1
+      - PING=1
+      - EXEC=1
+      - DISABLE_IPV6=1
+      # Needed for Watchtower to remove old containers/images (WATCHTOWER_CLEANUP)
+      - DELETE=1
+      # Needed for autoheal to restart unhealthy containers
+      - RESTART=1
+    # Published on the LAN only so Homepage (zangetsu) can read container
+    # stats via docker.yaml. EXEC=1 is enabled above - a sensitive surface,
+    # but limited to the LAN, same trust model as the rest of the host.
+    ports:
+      - "192.168.10.215:2375:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - dockflare-internal
+    # Pinned tag (v0.5.0): no Watchtower label, versions managed manually.
+
+  dockflare-agent-init:
+    image: alpine:3.24
+    container_name: dockflare-agent-init
+    cpus: 0.10
+    mem_limit: 64m
+    pids_limit: 64
+    environment:
+      - TZ=${TZ}
+    command: ["sh", "-c", "chown -R 65532:65532 /app/data"]
+    volumes:
+      - /opt/apps/dockflare-agent:/app/data
+    networks:
+      - cloudflare-net
+    restart: "no"
+    # profiles: init - only runs with `docker compose --profile init up -d
+    # dockflare-agent-init`, never with a plain `docker compose up -d`. Must
+    # be run manually before the first start on a new host or reset volume
+    # (chowns /opt/apps/dockflare-agent to UID 65532, which dockflare-agent
+    # runs as). Without it dockflare-agent fails with a permission error on
+    # first start. Accepted trade-off: without profiles, depends_on:
+    # service_completed_successfully forced dockflare-agent to wait for init
+    # on every stack start (and init stayed in Exited(0) forever, cluttering
+    # Komodo). Komodo has no native label to hide a single container from the
+    # list (`komodo.skip` only affects the bulk "Stop All Containers" action,
+    # not the UI).
+    profiles:
+      - init
+    labels:
+      komodo.skip: ""
+
+  dockflare-agent:
+    image: alplat/dockflare-agent:latest
+    container_name: dockflare-agent
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    volumes:
+      - /opt/apps/dockflare-agent:/app/data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+      - DOCKFLARE_MASTER_URL=http://192.168.10.214:5000
+      - DOCKFLARE_API_KEY=${DOCKFLARE_AGENT_API_KEY}
+      - CLOUDFLARED_IMAGE=cloudflare/cloudflared:latest
+      - CLOUDFLARED_NETWORK_NAME=cloudflare-net
+      - AGENT_DISPLAY_NAME=urahara
+    depends_on:
+      docker-socket-proxy:
+        condition: service_started
+    networks:
+      - cloudflare-net
+      - dockflare-internal
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

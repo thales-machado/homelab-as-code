@@ -1,0 +1,36 @@
+services:
+  watchtower:
+    image: ghcr.io/nicholas-fedor/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 128m
+    pids_limit: 32
+    ports:
+      - "${WATCHTOWER_PORT:-8080}:8080"
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+      - REPO_USER=${ADMIN_EMAIL}
+      - REPO_PASS=${DOCKERHUB_PAT}
+      - WATCHTOWER_CLEANUP=true
+      # 03:30 BRT: after the backups (sqlite-backup 02:30, postgres-backup
+      # 02:35) and before the jobs de pagamento do n8n window (05:00-06:00). Updates
+      # recreate containers, so avoid overlapping other services' schedules.
+      - "WATCHTOWER_SCHEDULE=0 30 3 * * *"
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=${WATCHTOWER_NOTIFICATION_URL}
+      - WATCHTOWER_NOTIFICATION_REPORT=true
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_HTTP_API_TOKEN}
+      - WATCHTOWER_HTTP_API_METRICS=true
+    depends_on:
+      docker-socket-proxy:
+        condition: service_started
+    networks:
+      - cloudflare-net
+      - dockflare-internal
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

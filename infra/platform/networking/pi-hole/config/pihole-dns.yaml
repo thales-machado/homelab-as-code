@@ -1,0 +1,117 @@
+# =============================================================================
+# Pi-hole — Local DNS Records
+# =============================================================================
+# To apply changes: run scripts/networking/sync-pihole-dns.sh
+# Or commit - GitHub Actions runs it automatically.
+# =============================================================================
+
+records:
+  # --- Platform - Networking ---
+  - domain: dockflare.lan.example.com
+    ip: 192.168.10.214
+  - domain: pihole.lan.example.com
+    ip: 192.168.10.214
+  - domain: traefik.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Platform - Security ---
+  - domain: vaultwarden.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Platform - Management ---
+  - domain: komodo.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Platform - Backup ---
+  # Duplicati decommissioned (replaced by Restic via Dagu); entries kept
+  # commented out in case of rollback.
+  # - domain: duplicati-urahara.lan.example.com
+  #   ip: 192.168.10.214
+  # - domain: duplicati.lan.example.com
+  #   ip: 192.168.10.214
+  - domain: rclone.lan.example.com
+    ip: 192.168.10.214
+  # Plain SMB, no Traefik in between: points straight at the real host
+  # (urahara), no certResolver - out of scope for the DNS-01 setup.
+  - domain: samba.lan.example.com
+    ip: 192.168.10.215
+  # Moonlight pairing page via Traefik (cross-host.yml); the stream itself
+  # goes straight to urahara's IP.
+  - domain: wolf.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Network Infrastructure ---
+  - domain: headroom.lan.example.com
+    ip: 192.168.10.214
+  - domain: nas.lan.example.com
+    ip: 192.168.10.214
+  - domain: unifi.lan.example.com
+    ip: 192.168.10.250
+
+  # --- Hosts ---
+  - domain: zangetsu.lan.example.com
+    ip: 192.168.10.214
+  - domain: urahara.lan.example.com
+    ip: 192.168.10.215
+
+  # --- Observability ---
+  - domain: grafana.lan.example.com
+    ip: 192.168.10.214
+  - domain: victoriametrics.lan.example.com
+    ip: 192.168.10.214
+  - domain: dozzle.lan.example.com
+    ip: 192.168.10.214
+  - domain: uptime-kuma.lan.example.com
+    ip: 192.168.10.214
+  - domain: loki.lan.example.com
+    ip: 192.168.10.214
+  - domain: scrutiny.lan.example.com
+    ip: 192.168.10.214
+  - domain: healthchecks.lan.example.com
+    ip: 192.168.10.214
+  # - domain: alloy.lan.example.com
+  #   ip: 192.168.10.214
+
+  # --- Automation ---
+  - domain: dagu.lan.example.com
+    ip: 192.168.10.214
+  - domain: n8n.lan.example.com
+    ip: 192.168.10.214
+
+  # --- AI ---
+
+  # --- Integration ---
+  - domain: evo-api.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Finance ---
+  - domain: firefly.lan.example.com
+    ip: 192.168.10.214
+  - domain: fidi.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Content ---
+  - domain: immich.lan.example.com
+    ip: 192.168.10.214
+  - domain: paperless.lan.example.com
+    ip: 192.168.10.214
+  - domain: stirling.lan.example.com
+    ip: 192.168.10.214
+  - domain: tandoor.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Utilities ---
+  - domain: homepage.lan.example.com
+    ip: 192.168.10.214
+  - domain: it-tools.lan.example.com
+    ip: 192.168.10.214
+  - domain: trilium.lan.example.com
+    ip: 192.168.10.214
+  - domain: speedtest.lan.example.com
+    ip: 192.168.10.214
+  - domain: vikunja.lan.example.com
+    ip: 192.168.10.214
+
+  # --- Smart Home ---
+  - domain: homeassistant.lan.example.com
+    ip: 192.168.10.214

@@ -1,0 +1,42 @@
+services:
+  samba:
+    image: ghcr.io/servercontainers/samba:latest
+    container_name: samba
+    restart: unless-stopped
+    cpus: 0.30
+    mem_limit: 256m
+    pids_limit: 64
+    # Published on urahara's LAN IP: Kodi (another machine) connects via IP:port.
+    # No network_mode: host (that exception is documented only for
+    # keepalived/VRRP); plain SMB works fine on a bridge with port 445.
+    ports:
+      - "192.168.10.215:445:445"
+    # service_healthy, not service_started: the rclone container starts fast
+    # but the FUSE mount itself takes a few more seconds (see the healthcheck
+    # in rclone.yaml). This covers the race at first start; rslave below
+    # covers later remounts.
+    depends_on:
+      rclone:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: /mnt/remote/Media
+        target: /shares/media
+        read_only: true
+        bind:
+          propagation: rslave
+      - type: bind
+        source: /mnt/games-4tb
+        target: /shares/games
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - SAMBA_CONF_WORKGROUP=WORKGROUP
+      - SAMBA_CONF_MAP_TO_GUEST=Bad User
+      - SAMBA_VOLUME_CONFIG_media=[Media];path=/shares/media;guest ok = yes;guest only = yes;read only = yes;browseable = yes
+      - SAMBA_VOLUME_CONFIG_games=[Games];path=/shares/games;guest ok = yes;guest only = yes;read only = no;browseable = yes
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"

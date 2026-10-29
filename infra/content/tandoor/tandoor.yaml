@@ -1,0 +1,85 @@
+services:
+  tandoor-db:
+    image: postgres:16-alpine
+    container_name: tandoor-db
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d tandoor"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - /opt/apps/tandoor/db:/var/lib/postgresql/data
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=tandoor
+    # No Watchtower label, never auto-updated (deliberate, database).
+    networks:
+      - cloudflare-net
+    # Published on the LAN IP so postgres-exporter/backup-postgres.sh on
+    # zangetsu can reach it. Same pattern as paperless-db (5432) and
+    # immich-db (5433), next free port.
+    ports:
+      - "192.168.10.215:5434:5432"
+
+  tandoor:
+    # Pinned to 2.6.13 (not :latest). A regression in 2.6.15 breaks AI import:
+    # the provider's JSON response is fed into scrape_html() (which expects
+    # HTML with schema.org), raises NoSchemaFoundInWildMode, and the import
+    # always fails. Upstream bug open, no fix:
+    # https://github.com/TandoorRecipes/recipes/issues/4829
+    # No Watchtower label while pinned, so it never drifts back to latest.
+    image: vabene1111/recipes:2.6.13
+    container_name: tandoor
+    restart: unless-stopped
+    cpus: 1.00
+    mem_limit: 512m
+    pids_limit: 128
+    depends_on:
+      tandoor-db:
+        condition: service_healthy
+      dockflare-agent:
+        condition: service_started
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+      - SECRET_KEY=${TANDOOR_SECRET_KEY}
+      # Must include localhost (internal healthcheck), the LAN IP (Homepage
+      # widget hits 192.168.10.215:8083 directly) and the public hostname
+      # (via DockFlare/Cloudflare Tunnel).
+      - ALLOWED_HOSTS=tandoor,tandoor.lan.example.com,tandoor.example.com,localhost,192.168.10.215
+      - DB_ENGINE=django.db.backends.postgresql
+      - POSTGRES_HOST=tandoor-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=tandoor
+    volumes:
+      - /opt/apps/tandoor/static:/opt/recipes/staticfiles
+      - /opt/apps/tandoor/media:/opt/recipes/mediafiles
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/accounts/login/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - cloudflare-net
+    labels:
+      dockflare.enable: "true"
+      dockflare.hostname: "tandoor.example.com"
+      dockflare.service: "http://tandoor:80"
+    # Published on the LAN IP so Traefik (zangetsu) can reach it via the
+    # cross-host file provider. Port 80 would collide with the Pi-hole replica,
+    # which already publishes 192.168.10.215:80 (its web admin). 8083 confirmed free.
+    ports:
+      - "192.168.10.215:8083:80"

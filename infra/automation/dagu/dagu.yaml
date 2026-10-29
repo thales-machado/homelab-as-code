@@ -1,0 +1,39 @@
+services:
+  dagu:
+    image: ghcr.io/dagucloud/dagu:latest
+    container_name: dagu
+    restart: unless-stopped
+    # user 0:0 + entrypoint without /entrypoint.sh: the default entrypoint
+    # drops privileges and blocks access to docker.sock (needed by docker.run steps)
+    user: "0:0"
+    entrypoint: ["/usr/local/bin/tini", "-g", "--"]
+    command: ["dagu", "start-all"]
+    cpus: 0.50
+    mem_limit: 256m
+    pids_limit: 64
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - DAGU_AUTH_MODE=basic
+      - DAGU_AUTH_BASIC_USERNAME=${ADMIN_USER}
+      - DAGU_AUTH_BASIC_PASSWORD=${ADMIN_PASSWORD}
+      - DAGU_TZ=${TZ}
+      - TZ=${TZ}
+    volumes:
+      - /opt/apps/dagu:/var/lib/dagu
+      - ./dags:/var/lib/dagu/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Dedicated key for the ssh.run executor to reach urahara (Dagu does not
+      # support a remote DOCKER_HOST per step, see restic-backup-urahara.yaml).
+      # Generated outside the repo, never committed; only the bind mount is in git.
+      - /opt/apps/dagu/ssh:/opt/homelab-ssh:ro
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      traefik.enable: "true"
+      traefik.http.routers.dagu.rule: "Host(`dagu.lan.example.com`)"
+      traefik.http.routers.dagu.entrypoints: "websecure"
+      traefik.http.routers.dagu.tls.certresolver: "cloudflare"
+      traefik.http.routers.dagu.middlewares: "crowdsec@file,security-headers@file"
+      traefik.http.services.dagu.loadbalancer.server.port: "8080"

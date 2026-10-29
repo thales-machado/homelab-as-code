@@ -1,0 +1,26 @@
+services:
+  dozzle-agent:
+    image: amir20/dozzle:latest
+    container_name: dozzle-agent
+    restart: unless-stopped
+    cpus: 0.20
+    mem_limit: 64m
+    pids_limit: 32
+    command: agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - ${HOMELAB_ENV}
+    environment:
+      - TZ=${TZ}
+    # Published on urahara's LAN IP so the Dozzle master (zangetsu) can
+    # connect. Same cross-host pattern as other services (see CONVENTIONS.md,
+    # "Cross-host services (IP:port pattern)"). Agent mode replaces
+    # docker-socket-proxy here: the official Dozzle docs state explicitly
+    # that agent and proxy do not combine.
+    ports:
+      - "192.168.10.215:7007:7007"
+    networks:
+      - cloudflare-net
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
